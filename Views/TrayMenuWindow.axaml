@@ -1,0 +1,35 @@
+<!--
+    Fichier      :  TrayMenuWindow.axaml
+    Projet       :  AlpenMux
+
+    Description  :  Menu du clic droit sur l'icône de la zone de notification (Windows).
+                    Fenêtre sans décoration qui s'adapte à son contenu : aucune zone de défilement,
+                    donc aucune flèche. Elle se ferme quand elle perd le focus.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:AlpenMux.Services"
+        x:Class="AlpenMux.Views.TrayMenuWindow"
+        Title="AlpenMux"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        CanResize="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        Background="{DynamicResource Surface}">
+
+    <!-- Cadre dessiné dans la fenêtre : couleur d'accent, visible sur les thèmes clair et sombre -->
+    <Border BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+        <StackPanel Margin="4" MinWidth="230">
+            <Button Classes="flat" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    Content="{l:Tr Tray_Show}" Click="OnShowClick" />
+            <Separator Margin="8,4" />
+            <TextBlock x:Name="ServersText" Classes="muted" Margin="12,4,12,4" />
+            <Button x:Name="StopAllButton" Classes="flat" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    Content="{l:Tr Tray_StopAll}" Click="OnStopAllClick" />
+            <Separator Margin="8,4" />
+            <Button Classes="flat" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    Content="{l:Tr Tray_Quit}" Click="OnQuitClick" />
+        </StackPanel>
+    </Border>
+</Window>

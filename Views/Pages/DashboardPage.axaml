@@ -1,0 +1,192 @@
+<!--
+    Fichier      :  DashboardPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Accueil : état général, ressources, serveurs actifs, raccourcis.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.DashboardPage"
+             x:DataType="vm:DashboardViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="28" Spacing="18">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="h1" Text="{l:Tr Dash_Title}" />
+                <TextBlock Classes="muted" Text="{l:Tr Dash_Subtitle}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Installation incomplète -->
+            <Border Classes="card" IsVisible="{Binding !SetupOk}" BorderBrush="{DynamicResource WarnBrush}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <TextBlock Classes="icon big warn" Text="{StaticResource IconWarning}" />
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="h3" Text="{l:Tr Dash_SetupNeeded}" />
+                        <TextBlock Classes="muted" Text="{l:Tr Dash_SetupNeeded_Desc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="accent" Command="{Binding GoCommand}" CommandParameter="Setup">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon" Text="{StaticResource IconWrench}" />
+                            <TextBlock Text="{l:Tr Dash_OpenSetup}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Ressources -->
+            <UniformGrid Columns="4" ColumnSpacing="14" RowSpacing="14">
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconGpu}" />
+                            <TextBlock Classes="h3" Text="GPU" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="value" Text="{Binding GpuUtil, StringFormat={}{0:0} %}" />
+                        <ProgressBar Classes="thin" Value="{Binding GpuUtil}" />
+                        <TextBlock Classes="muted small" Text="{Binding GpuName}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconDatabase}" />
+                            <TextBlock Classes="h3" Text="VRAM" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="value" Text="{Binding VramPercent, StringFormat={}{0:0} %}" />
+                        <ProgressBar Classes="thin" Value="{Binding VramPercent}" />
+                        <TextBlock Classes="muted small" Text="{Binding VramText}" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconCpu}" />
+                            <TextBlock Classes="h3" Text="CPU" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="value" Text="{Binding Cpu, StringFormat={}{0:0} %}" />
+                        <ProgressBar Classes="thin" Value="{Binding Cpu}" />
+                        <TextBlock Classes="muted small" Text="{Binding CpuName}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconMemory}" />
+                            <TextBlock Classes="h3" Text="RAM" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="value" Text="{Binding RamPercent, StringFormat={}{0:0} %}" />
+                        <ProgressBar Classes="thin" Value="{Binding RamPercent}" />
+                        <TextBlock Classes="muted small" Text="{Binding RamText}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- VRAM : qui occupe quoi, sur chaque GPU -->
+            <Border Classes="card" IsVisible="{Binding HasGpuVram}">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconDatabase}" />
+                        <TextBlock Classes="h3" Text="{l:Tr Dash_VramTitle}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding GpuVram}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="16" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GpuVramView">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="label" Margin="0" Text="{Binding Title}" />
+                                    <c:VramPanel Segments="{Binding Segments}" Total="{Binding Total}" />
+                                    <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding Status}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Actions rapides -->
+            <TextBlock Classes="h2" Text="{l:Tr Dash_QuickActions}" />
+            <UniformGrid Columns="3" ColumnSpacing="14">
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                        Command="{Binding GoCommand}" CommandParameter="Launch">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <TextBlock Classes="icon big accent" Text="{StaticResource IconPlay}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Classes="h3" Text="{l:Tr Dash_LaunchModel}" />
+                            <TextBlock Classes="muted small" Text="{Binding ServersText}" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                        Command="{Binding GoCommand}" CommandParameter="Models">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <TextBlock Classes="icon big accent" Text="{StaticResource IconCloudDown}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Classes="h3" Text="{l:Tr Dash_ManageModels}" />
+                            <TextBlock Classes="muted small" Text="{Binding ModelsText}" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="16"
+                        Command="{Binding GoCommand}" CommandParameter="Setup">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <TextBlock Classes="icon big accent" Text="{StaticResource IconWrench}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Classes="h3" Text="{l:Tr Nav_Setup}" />
+                            <TextBlock Classes="muted small" Text="{Binding VllmText}" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+            </UniformGrid>
+
+            <!-- Serveurs -->
+            <TextBlock Classes="h2" Text="{l:Tr Dash_Servers}" />
+            <!-- Adresse unique pour tous les serveurs -->
+            <Border Classes="card" Padding="14,10" IsVisible="{Binding RouterRunning}" BorderBrush="{DynamicResource Accent}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                    <TextBlock Classes="icon accent" Text="{StaticResource IconLink}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Classes="h3" Text="{l:Tr Dash_Router}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding RouterModels}" />
+                    </StackPanel>
+                    <SelectableTextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" Text="{Binding RouterUrl}" />
+                    <Button Grid.Column="3" Classes="flat" ToolTip.Tip="{l:Tr Common_CopyUrl}" Command="{Binding CopyRouterUrlCommand}">
+                        <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Classes="card" IsVisible="{Binding !HasInstances}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Classes="icon muted" VerticalAlignment="Top" Text="{StaticResource IconInfo}" />
+                    <TextBlock Grid.Column="1" Classes="muted" Text="{l:Tr Dash_NoServer_Long}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Instances}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InstanceViewModel">
+                        <Border Classes="card" Margin="0,0,0,8" Padding="14,10">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                                <TextBlock Classes="icon fill" Classes.ok="{Binding IsReady}" Classes.warn="{Binding IsStarting}"
+                                           Text="{Binding StateIcon}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Classes="h3" Text="{Binding Title}" />
+                                    <TextBlock Classes="muted small" Text="{Binding StatusText}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Classes="mono muted" VerticalAlignment="Center" Text="{Binding ApiUrl}" />
+                                <Button Grid.Column="3" Classes="flat" ToolTip.Tip="{l:Tr Common_CopyUrl}"
+                                        Command="{Binding $parent[ItemsControl].((vm:DashboardViewModel)DataContext).CopyUrlCommand}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

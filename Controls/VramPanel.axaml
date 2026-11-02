@@ -1,0 +1,34 @@
+<!--
+    Fichier      :  VramPanel.axaml
+    Projet       :  AlpenMux
+    Description  :  Barre de VRAM + légende (couleur, nom, taille, détail), utilisée par l'Accueil et la page Serveurs.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:AlpenMux.Controls"
+             xmlns:l="using:AlpenMux.Services"
+             x:Class="AlpenMux.Controls.VramPanel"
+             x:DataType="c:VramPanel">
+    <StackPanel Spacing="8">
+        <c:VramBar Segments="{Binding $parent[c:VramPanel].Segments}" Total="{Binding $parent[c:VramPanel].Total}" />
+        <ItemsControl ItemsSource="{Binding $parent[c:VramPanel].Segments}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel ItemSpacing="18" LineSpacing="6" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="c:VramSegment">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="11" Height="11" CornerRadius="3" VerticalAlignment="Center" Background="{Binding Brush}"
+                                BorderBrush="{DynamicResource PrimaryForeground}"
+                                BorderThickness="{Binding IsNew, Converter={x:Static l:Converters.NewSegmentBorder}}" />
+                        <TextBlock Classes="small" VerticalAlignment="Center" Text="{Binding Label}" />
+                        <TextBlock Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding SizeText}" />
+                        <TextBlock Classes="small muted" VerticalAlignment="Center" IsVisible="{Binding HasDetail}" Text="{Binding Detail}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

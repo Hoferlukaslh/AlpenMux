@@ -1,0 +1,158 @@
+<!--
+    Fichier      :  MainWindow.axaml
+    Projet       :  AlpenMux
+
+    Description  :  Fenêtre principale : menu latéral (repliable) + page courante.
+                    Chaque ViewModel de page est associé à sa vue par un DataTemplate.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AlpenMux.ViewModels"
+        xmlns:pages="using:AlpenMux.Views.Pages"
+        xmlns:l="using:AlpenMux.Services"
+        x:Class="AlpenMux.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="AlpenMux"
+        Icon="avares://alpenmux/Assets/icon.png"
+        Width="1280" Height="820" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="vm:DashboardViewModel"><pages:DashboardPage /></DataTemplate>
+        <DataTemplate DataType="vm:SetupViewModel"><pages:SetupPage /></DataTemplate>
+        <DataTemplate DataType="vm:ModelsViewModel"><pages:ModelsPage /></DataTemplate>
+        <DataTemplate DataType="vm:LaunchViewModel"><pages:LaunchPage /></DataTemplate>
+        <DataTemplate DataType="vm:MonitorViewModel"><pages:MonitorPage /></DataTemplate>
+        <DataTemplate DataType="vm:ChatViewModel"><pages:ChatPage /></DataTemplate>
+        <DataTemplate DataType="vm:ImagesViewModel"><pages:ImagesPage /></DataTemplate>
+        <DataTemplate DataType="vm:AudioViewModel"><pages:AudioPage /></DataTemplate>
+        <DataTemplate DataType="vm:KnowledgeViewModel"><pages:KnowledgePage /></DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel"><pages:SettingsPage /></DataTemplate>
+    </Window.DataTemplates>
+
+    <Window.Styles>
+        <Style Selector="Grid#Sidebar">
+            <Setter Property="Width" Value="210" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid#Sidebar.collapsed">
+            <Setter Property="Width" Value="64" />
+        </Style>
+        <Style Selector="Grid#Sidebar.collapsed :is(Control).nav-label">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="TextBlock#CollapseIcon">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid#Sidebar.collapsed TextBlock#CollapseIcon">
+            <Setter Property="RenderTransform" Value="rotate(180deg)" />
+        </Style>
+        <Style Selector="Button.side">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Margin" Value="8,2" />
+            <Setter Property="Padding" Value="14,9" />
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <Grid ColumnDefinitions="Auto,*">
+            <!-- Menu latéral -->
+            <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}"
+                    BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="0,0,1,0">
+                <Grid x:Name="Sidebar" RowDefinitions="Auto,*,Auto,Auto"
+                      Classes.collapsed="{Binding IsSidebarCollapsed}">
+
+                    <!-- Logo -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="18,18,0,18">
+                        <Image Source="avares://alpenmux/Assets/icon-64.png" Width="28" Height="28" />
+                        <TextBlock Classes="h2 nav-label" VerticalAlignment="Center">
+                            <Run Text="Alpen" /><Run Text="mux" Foreground="{DynamicResource BrandMux}" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Pages principales -->
+                    <ListBox Grid.Row="1" Classes="nav" ItemsSource="{Binding NavItems}"
+                             SelectedItem="{Binding SelectedNav}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:NavItem">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,9" Background="Transparent"
+                                      ToolTip.Tip="{Binding Label}">
+                                    <TextBlock Grid.Column="0" Classes="icon" FontSize="20" Text="{Binding Icon}" />
+                                    <TextBlock Grid.Column="1" Classes="nav-label" Margin="12,0,0,0" VerticalAlignment="Center"
+                                               FontSize="14" Text="{Binding Label}" />
+                                    <Panel Grid.Column="2" Classes="nav-label">
+                                    <Border
+                                            IsVisible="{Binding HasBadge}"
+                                            Background="{DynamicResource Accent}" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0">
+                                        <TextBlock Text="{Binding Badge}" FontSize="11" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    </Panel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Paramètres -->
+                    <ListBox Grid.Row="2" Classes="nav" ItemsSource="{Binding BottomNavItems}"
+                             SelectedItem="{Binding SelectedBottomNav}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:NavItem">
+                                <StackPanel Orientation="Horizontal" Margin="14,9" Background="Transparent">
+                                    <TextBlock Classes="icon" FontSize="20" Text="{Binding Icon}" />
+                                    <TextBlock Classes="nav-label" Margin="12,0,0,0" VerticalAlignment="Center"
+                                               FontSize="14" Text="{Binding Label}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Grid.Row="3" Margin="0,0,0,12">
+                        <Button Classes="side" Command="{Binding ToggleThemeCommand}" ToolTip.Tip="{l:Tr Nav_ToggleTheme}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Classes="icon" FontSize="20" Text="{StaticResource IconHalf}" />
+                                <TextBlock Classes="nav-label muted" VerticalAlignment="Center" Text="{l:Tr Nav_ToggleTheme}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="side" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{l:Tr Nav_Collapse}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock x:Name="CollapseIcon" Classes="icon" FontSize="20" Text="{StaticResource IconCollapse}" />
+                                <TextBlock Classes="nav-label muted" VerticalAlignment="Center" Text="{l:Tr Nav_Collapse}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Page courante -->
+            <TransitioningContentControl Grid.Column="1" Content="{Binding CurrentPage}">
+                <TransitioningContentControl.PageTransition>
+                    <CrossFade Duration="0:0:0.15" />
+                </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
+        </Grid>
+
+        <!-- Fermeture : arrêt des serveurs -->
+        <Border IsVisible="{Binding IsClosing}" Background="#AA000000">
+            <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
+                <StackPanel Spacing="14" Width="320">
+                    <TextBlock Classes="h2" Text="{l:Tr Close_Title}" HorizontalAlignment="Center" />
+                    <ProgressBar IsIndeterminate="True" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" Text="{l:Tr Close_Text}" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

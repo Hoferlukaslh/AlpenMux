@@ -1,0 +1,47 @@
+<!--
+    Fichier      :  ImagePreview.axaml
+    Projet       :  AlpenMux
+    Description  :  Visionneuse d'image réutilisable (chat, carrousel des images) : barre d'outils (zoom, copier,
+                    télécharger, fermer) au-dessus d'une image zoomable (ZoomImageView). Le code est dans ImagePreview.axaml.cs.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Controls.ImagePreview">
+    <Grid RowDefinitions="Auto,*" RowSpacing="10">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Classes="flat" Padding="10,4" Click="OnZoomOut" ToolTip.Tip="{l:Tr Preview_ZoomOut}">
+                    <TextBlock FontWeight="Bold" Text="−" />
+                </Button>
+                <Button Classes="flat" Padding="10,4" Click="OnZoomIn" ToolTip.Tip="{l:Tr Preview_ZoomIn}">
+                    <TextBlock FontWeight="Bold" Text="+" />
+                </Button>
+                <Button Classes="flat" Padding="8,4" Click="OnFit" ToolTip.Tip="{l:Tr Preview_Fit}">
+                    <TextBlock x:Name="ZoomLabel" Classes="small" MinWidth="48" TextAlignment="Center" Text="100 %" />
+                </Button>
+            </StackPanel>
+            <TextBlock Grid.Column="1" Classes="muted small" VerticalAlignment="Center" HorizontalAlignment="Center"
+                       Text="{l:Tr Preview_Hint}" TextWrapping="Wrap" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <Button Click="OnCopy" ToolTip.Tip="{l:Tr Preview_Copy}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                        <TextBlock Text="{l:Tr Preview_Copy}" />
+                    </StackPanel>
+                </Button>
+                <Button Click="OnDownload" ToolTip.Tip="{l:Tr Preview_Download}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconDownload}" />
+                        <TextBlock Text="{l:Tr Preview_Download}" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="flat" Padding="8,4" Click="OnClose" ToolTip.Tip="{l:Tr Preview_Close}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconClose}" />
+                </Button>
+            </StackPanel>
+        </Grid>
+        <c:ZoomImageView x:Name="View" Grid.Row="1" />
+    </Grid>
+</UserControl>

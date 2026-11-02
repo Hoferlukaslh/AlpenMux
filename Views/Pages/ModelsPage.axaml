@@ -1,0 +1,502 @@
+<!--
+    Fichier      :  ModelsPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Gestion des modèles : dossier, modèles installés, téléchargement Hugging Face, token.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.ModelsPage"
+             x:DataType="vm:ModelsViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="28,28,28,16">
+        <!-- En-tête -->
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,14">
+            <TextBlock Classes="h1" Text="{l:Tr Models_Title}" />
+            <TextBlock Classes="muted" Text="{Binding DiskText}" />
+        </StackPanel>
+
+        <!-- Dossier des modèles -->
+        <Border Grid.Row="1" Classes="card" Padding="12" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconFolder}" />
+                <TextBox Grid.Column="1" Classes="mono" Text="{Binding ModelsDir}" PlaceholderText="~/models" />
+                <Button Grid.Column="2" Command="{Binding ApplyModelsDirCommand}" ToolTip.Tip="{l:Tr Common_Apply}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                </Button>
+                <Button Grid.Column="3" Command="{Binding BrowseModelsDirCommand}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconFolderOpen}" />
+                        <TextBlock Text="{l:Tr Common_Browse}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="4" Command="{Binding OpenModelsDirCommand}" ToolTip.Tip="{l:Tr Models_OpenDir}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTab}">
+            <!-- ================================================= Mes modèles -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon" Text="{StaticResource IconModels}" />
+                        <TextBlock Text="{Binding LocalTabTitle}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid RowDefinitions="Auto,*" RowSpacing="10">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox PlaceholderText="{l:Tr Models_Filter}" Text="{Binding Filter}">
+                            <TextBox.InnerLeftContent>
+                                <TextBlock Classes="icon muted" Margin="8,0,0,0" Text="{StaticResource IconSearch}" />
+                            </TextBox.InnerLeftContent>
+                        </TextBox>
+                        <Button Grid.Column="1" Command="{Binding RefreshCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                                <TextBlock Text="{l:Tr Common_Refresh}" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <Panel Grid.Row="1">
+                        <!-- Aucun modèle -->
+                        <Border Classes="card" IsVisible="{Binding IsEmpty}" VerticalAlignment="Top">
+                            <StackPanel Spacing="10" HorizontalAlignment="Center" Margin="20">
+                                <TextBlock Classes="icon muted" FontSize="48" HorizontalAlignment="Center" Text="{StaticResource IconModels}" />
+                                <TextBlock Classes="h3" HorizontalAlignment="Center" Text="{l:Tr Models_Empty}" />
+                                <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="520" Text="{l:Tr Models_Empty_Desc}" />
+                                <Button Classes="accent" HorizontalAlignment="Center" Command="{Binding GoToDownloadCommand}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconCloudDown}" />
+                                        <TextBlock Text="{l:Tr Models_DownloadOne}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <ScrollViewer>
+                          <StackPanel>
+                            <!-- Téléchargements : une carte et une barre par téléchargement -->
+                            <ItemsControl ItemsSource="{Binding Downloads}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DownloadJob">
+                                        <Border Classes="card" Margin="0,0,0,10" BorderBrush="{DynamicResource Accent}">
+                                            <StackPanel Spacing="8">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                                    <TextBlock Classes="icon accent" Text="{StaticResource IconCloudDown}" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Classes="h3" FontSize="15" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Classes="mono muted" FontSize="11" Text="{Binding LocalDir}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                                        <Button Classes="flat" Command="{Binding ToggleLogsCommand}" ToolTip.Tip="{l:Tr Setup_Logs}">
+                                                            <TextBlock Classes="icon" Text="{StaticResource IconTerminal}" />
+                                                        </Button>
+                                                        <Button Command="{Binding PauseCommand}" IsVisible="{Binding CanPause}">
+                                                            <StackPanel Classes="btn">
+                                                                <TextBlock Classes="icon" Text="{StaticResource IconPause}" />
+                                                                <TextBlock Text="{l:Tr Hf_Pause}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Classes="accent" Command="{Binding ResumeCommand}" IsVisible="{Binding IsPaused}">
+                                                            <StackPanel Classes="btn">
+                                                                <TextBlock Classes="icon" Text="{StaticResource IconPlay}" />
+                                                                <TextBlock Text="{l:Tr Hf_Resume}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Classes="danger" Command="{Binding CancelCommand}" IsVisible="{Binding ShowProgress}">
+                                                            <StackPanel Classes="btn">
+                                                                <TextBlock Classes="icon" Text="{StaticResource IconClose}" />
+                                                                <TextBlock Text="{l:Tr Common_Cancel}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Classes="accent" Command="{Binding RetryCommand}" IsVisible="{Binding IsFailed}">
+                                                            <StackPanel Classes="btn">
+                                                                <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                                                                <TextBlock Text="{l:Tr Hf_Resume}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Command="{Binding DismissCommand}" IsVisible="{Binding IsFinished}" ToolTip.Tip="{l:Tr Hf_Dismiss}">
+                                                            <TextBlock Classes="icon" Text="{StaticResource IconClose}" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <ProgressBar Value="{Binding Progress.Percent}" IsIndeterminate="{Binding Progress.IsIndeterminate}"
+                                                             ShowProgressText="True" Height="18" IsVisible="{Binding ShowProgress}" />
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16" IsVisible="{Binding IsRunning}">
+                                                    <TextBlock Classes="muted small" Text="{Binding Progress.Detail}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Progress.SpeedText}" />
+                                                    <TextBlock Grid.Column="2" Classes="small" FontWeight="Bold" Text="{Binding Progress.EtaText}" />
+                                                </Grid>
+                                                <TextBlock Classes="small" Classes.error="{Binding IsFailed}" TextWrapping="Wrap" Text="{Binding StatusText}"
+                                                           IsVisible="{Binding IsFinished}" />
+                                                <TextBlock Classes="small warn" TextWrapping="Wrap" Text="{Binding StatusText}" IsVisible="{Binding IsPaused}" />
+                                                <Border Classes="console" Height="140" IsVisible="{Binding ShowLogs}">
+                                                    <ListBox ItemsSource="{Binding Logs}" Background="Transparent" c:AutoScroll.IsEnabled="True">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="x:String">
+                                                                <SelectableTextBlock Text="{Binding}" />
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Cartes des modèles : plusieurs colonnes si la largeur le permet -->
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><c:AdaptiveColumnsPanel MinColumnWidth="560" ColumnSpacing="12" RowSpacing="10" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ModelItemViewModel">
+                                        <Border Classes="card">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                                <StackPanel Spacing="8">
+                                                    <!-- Carte plus étroite en colonnes : nom et étiquettes passent à la ligne au lieu d'être coupés -->
+                                                    <WrapPanel ItemSpacing="10" LineSpacing="4">
+                                                        <TextBlock Classes="h3" FontSize="15" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Name}" />
+                                                        <Border Classes="pill" VerticalAlignment="Center">
+                                                            <TextBlock Classes="small accent" Text="{Binding ModeText}" />
+                                                        </Border>
+                                                        <Border Classes="pill" VerticalAlignment="Center" Background="{DynamicResource SurfaceAlt}">
+                                                            <TextBlock Classes="small muted" Text="{Binding LayoutText}" />
+                                                        </Border>
+                                                    </WrapPanel>
+                                                    <WrapPanel ItemSpacing="22" LineSpacing="4">
+                                                        <StackPanel>
+                                                            <TextBlock Classes="label" Text="{l:Tr Model_Arch}" />
+                                                            <TextBlock Classes="small" Text="{Binding Model.Architecture}" />
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Classes="label" Text="{l:Tr Model_Quant}" />
+                                                            <TextBlock Classes="small" Text="{Binding Model.Quantization}" />
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Classes="label" Text="{l:Tr Model_Size}" />
+                                                            <TextBlock Classes="small" Text="{Binding SizeText}" />
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Classes="label" Text="{l:Tr Model_Vram}" />
+                                                            <TextBlock Classes="small" Text="{Binding VramText}" />
+                                                        </StackPanel>
+                                                        <StackPanel>
+                                                            <TextBlock Classes="label" Text="{l:Tr Model_Context}" />
+                                                            <TextBlock Classes="small" Text="{Binding Model.MaxPositions, TargetNullValue=—}" />
+                                                        </StackPanel>
+                                                    </WrapPanel>
+                                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                                        <TextBlock Classes="icon fill" FontSize="15" VerticalAlignment="Top"
+                                                                   Classes.ok="{Binding FitClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                                                   Classes.warn="{Binding FitClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                                                   Classes.error="{Binding FitClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                                                   Text="{Binding FitIcon}" />
+                                                        <TextBlock Grid.Column="1" Classes="small" Text="{Binding FitText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <TextBlock Classes="small error" TextWrapping="Wrap" Text="{Binding ProblemText}"
+                                                               IsVisible="{Binding Model.IsBroken}" />
+                                                    <TextBlock Classes="small warn" TextWrapping="Wrap" Text="{Binding WarningText}"
+                                                               IsVisible="{Binding WarningText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <TextBlock Classes="small muted" TextWrapping="Wrap" Text="{Binding SourceText}"
+                                                               IsVisible="{Binding SourceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <SelectableTextBlock Classes="mono muted" FontSize="11" TextWrapping="Wrap" Text="{Binding Model.Root}" />
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center" MinWidth="150">
+                                                    <Button HorizontalAlignment="Stretch" Command="{Binding ConvertCommand}" Classes.accent="{Binding ConvertIsPrimary}"
+                                                            IsVisible="{Binding Model.CanConvert}" ToolTip.Tip="{l:Tr Models_Convert_Tip}">
+                                                        <StackPanel Classes="btn">
+                                                            <TextBlock Classes="icon" Text="{StaticResource IconArrows}" />
+                                                            <TextBlock Text="{l:Tr Models_Convert}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Classes="accent" HorizontalAlignment="Stretch" Command="{Binding LaunchCommand}"
+                                                            IsVisible="{Binding ShowLaunch}"
+                                                            IsEnabled="{Binding !Model.IsBroken}">
+                                                        <StackPanel Classes="btn">
+                                                            <TextBlock Classes="icon" Text="{StaticResource IconPlay}" />
+                                                            <TextBlock Text="{l:Tr Models_Launch}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button HorizontalAlignment="Stretch" Command="{Binding OpenFolderCommand}">
+                                                        <StackPanel Classes="btn">
+                                                            <TextBlock Classes="icon" Text="{StaticResource IconFolderOpen}" />
+                                                            <TextBlock Text="{l:Tr Models_Open}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button HorizontalAlignment="Stretch" Command="{Binding AskDeleteCommand}"
+                                                            IsVisible="{Binding !IsConfirmingDelete}">
+                                                        <StackPanel Classes="btn">
+                                                            <TextBlock Classes="icon error" Text="{StaticResource IconTrash}" />
+                                                            <TextBlock Text="{l:Tr Common_Delete}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <StackPanel Spacing="6" IsVisible="{Binding IsConfirmingDelete}">
+                                                        <TextBlock Classes="small error" TextWrapping="Wrap" MaxWidth="150" Text="{l:Tr Models_ConfirmDelete}" />
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Button Classes="danger" Command="{Binding ConfirmDeleteCommand}" Content="{l:Tr Common_Yes}" />
+                                                            <Button Command="{Binding CancelDeleteCommand}" Content="{l:Tr Common_No}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                        </ScrollViewer>
+                    </Panel>
+                </Grid>
+            </TabItem>
+
+            <!-- ================================================= Téléchargement -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon" Text="{StaticResource IconCloudDown}" />
+                        <TextBlock Text="{l:Tr Models_Tab_Download}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid ColumnDefinitions="2*,3*" ColumnSpacing="14">
+                    <!-- Recherche -->
+                    <Border Classes="card">
+                        <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+                            <TextBlock Classes="h3" Text="{l:Tr Hf_Search}" />
+                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBox Text="{Binding SearchQuery}" PlaceholderText="{l:Tr Hf_SearchHint}">
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+                                <Button Grid.Column="1" Classes="accent" Command="{Binding SearchCommand}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconSearch}" />
+                                </Button>
+                            </Grid>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                                <ProgressBar IsIndeterminate="True" Width="80" Classes="thin" IsVisible="{Binding IsSearching}" />
+                                <TextBlock Classes="muted small" Text="{Binding SearchStatus}" />
+                            </StackPanel>
+                            <ListBox Grid.Row="3" Classes="plain" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SelectedResult}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="l:HfSearchResult">
+                                        <StackPanel Margin="10,6" Spacing="2">
+                                            <TextBlock FontWeight="Bold" Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Classes="icon muted" FontSize="13" Text="{StaticResource IconDownload}" />
+                                                    <TextBlock Classes="muted small" Text="{Binding Downloads, StringFormat={}{0:N0}}" />
+                                                </StackPanel>
+                                                <TextBlock Classes="muted small" Text="{Binding Likes, StringFormat=♥ {0:N0}}" />
+                                                <TextBlock Classes="muted small" Text="{Binding PipelineTag}" />
+                                                <TextBlock Classes="small warn" Text="{l:Tr Hf_GatedShort}" IsVisible="{Binding Gated}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Téléchargement -->
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel Spacing="12">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="h3" Text="{l:Tr Hf_DownloadTitle}" />
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="{l:Tr Hf_Repo}" />
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                            <TextBox Classes="mono" Text="{Binding RepoId}" PlaceholderText="Qwen/Qwen3-8B-AWQ" />
+                                            <Button Grid.Column="1" Command="{Binding LoadFilesCommand}" ToolTip.Tip="{l:Tr Hf_ShowFiles}">
+                                                <StackPanel Classes="btn">
+                                                    <TextBlock Classes="icon" Text="{StaticResource IconList}" />
+                                                    <TextBlock Text="{l:Tr Hf_Files}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="2" Command="{Binding OpenRepoPageCommand}" ToolTip.Tip="{l:Tr Hf_OpenPage}">
+                                                <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                        <StackPanel>
+                                            <TextBlock Classes="label" Text="{l:Tr Hf_TargetFolder}" />
+                                            <TextBox Classes="mono" Text="{Binding TargetFolder}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Classes="label" Text="{l:Tr Hf_Revision}" />
+                                            <TextBox Classes="mono" Text="{Binding Revision}" PlaceholderText="main" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="{l:Tr Hf_Include}" />
+                                        <TextBox Classes="mono" Text="{Binding Include}" PlaceholderText="*.json *Q4_K_M*.gguf" />
+                                        <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Hf_Include_Desc}" />
+                                    </StackPanel>
+                                    <CheckBox IsChecked="{Binding SkipUselessFiles}">
+                                        <StackPanel>
+                                            <TextBlock Text="{l:Tr Hf_SkipUseless}" />
+                                            <TextBlock Classes="muted small mono" TextWrapping="Wrap" Text="{x:Static l:HfService.UselessFilesPatterns}" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <!-- Format que vLLM ne sait pas charger -->
+                                    <Border Classes="inset" IsVisible="{Binding FormatWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                            <TextBlock Classes="icon" VerticalAlignment="Top" Text="{StaticResource IconWarning}"
+                                                       Classes.warn="{Binding FormatWarningClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                                       Classes.error="{Binding FormatWarningClass, Converter={x:Static l:Converters.IsErrorClass}}" />
+                                            <TextBlock Grid.Column="1" Classes="small" TextWrapping="Wrap" Text="{Binding FormatWarning}"
+                                                       Classes.warn="{Binding FormatWarningClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                                       Classes.error="{Binding FormatWarningClass, Converter={x:Static l:Converters.IsErrorClass}}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- GGUF : servis par llama.cpp, pas encore installé -->
+                                    <Border Classes="inset" IsVisible="{Binding GgufNeedsLlama}">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                            <TextBlock Classes="icon warn" VerticalAlignment="Top" Text="{StaticResource IconWarning}" />
+                                            <TextBlock Grid.Column="1" Classes="small warn" TextWrapping="Wrap" Text="{l:Tr Hf_GgufNeedsLlama}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Variantes GGUF -->
+                                    <Border Classes="inset" IsVisible="{Binding HasGgufVariants}">
+                                        <StackPanel Spacing="6">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Classes="icon accent" Text="{StaticResource IconStack}" />
+                                                <TextBlock Classes="h3" VerticalAlignment="Center" Text="{l:Tr Hf_GgufVariants}" />
+                                            </StackPanel>
+                                            <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Hf_GgufVariants_Desc}" />
+                                            <ItemsControl ItemsSource="{Binding GgufVariants}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel ItemSpacing="8" LineSpacing="6" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:GgufVariantViewModel">
+                                                        <CheckBox IsChecked="{Binding IsSelected}" ToolTip.Tip="{Binding FileName}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock FontWeight="Bold" Text="{Binding Quant}" />
+                                                                <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding SizeText}" />
+                                                                <TextBlock Classes="warn small" VerticalAlignment="Center" Text="{Binding PartsText}" />
+                                                            </StackPanel>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                        <Button Classes="accent" Command="{Binding DownloadCommand}" IsEnabled="{Binding !IsLoadingFiles}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon" Text="{StaticResource IconDownload}" />
+                                                <TextBlock Text="{l:Tr Hf_Download}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <ProgressBar Grid.Column="1" Classes="thin" Width="80" IsIndeterminate="True" VerticalAlignment="Center" IsVisible="{Binding IsLoadingFiles}" />
+                                        <TextBlock Grid.Column="2" Classes="small" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                   Classes.muted="{Binding DownloadSizeClass, Converter={x:Static l:Converters.IsMutedClass}}"
+                                                   Classes.error="{Binding DownloadSizeClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                                   Text="{Binding DownloadSizeText}" />
+                                    </Grid>
+                                    <!-- Verdict VRAM avant téléchargement (estimation sur la taille des fichiers) -->
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" IsVisible="{Binding HasDownloadFit}">
+                                        <TextBlock Classes="icon fill" FontSize="15" VerticalAlignment="Top"
+                                                   Classes.ok="{Binding DownloadFitClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                                   Classes.warn="{Binding DownloadFitClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                                   Classes.error="{Binding DownloadFitClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                                   Classes.muted="{Binding DownloadFitClass, Converter={x:Static l:Converters.IsMutedClass}}"
+                                                   Text="{Binding DownloadFitIcon}" />
+                                        <TextBlock Grid.Column="1" Classes="small" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding DownloadFitText}" />
+                                    </Grid>
+                                    <TextBlock Classes="small" TextWrapping="Wrap" Text="{Binding DownloadStatus}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Fichiers du dépôt -->
+                            <Border Classes="card" IsVisible="{Binding RepoFilesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="h3" Text="{l:Tr Hf_RepoFiles}" />
+                                    <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding RepoFilesStatus}" />
+                                    <ScrollViewer MaxHeight="240">
+                                        <ItemsControl ItemsSource="{Binding RepoFiles}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:HfFileViewModel">
+                                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10" Margin="0,1">
+                                                        <TextBlock Classes="mono" Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Column="1" Classes="muted small" VerticalAlignment="Center" Text="{Binding SizeText}" />
+                                                        <Button Grid.Column="2" Classes="flat" Command="{Binding IncludeCommand}" ToolTip.Tip="{l:Tr Hf_IncludeFile}">
+                                                            <TextBlock Classes="icon" FontSize="15" Text="{StaticResource IconPlus}" />
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ================================================= Token -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon" Text="{StaticResource IconKey}" />
+                        <TextBlock Text="{l:Tr Models_Tab_Token}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <Border Classes="card" VerticalAlignment="Top" MaxWidth="760" HorizontalAlignment="Left">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="h3" Text="{l:Tr Hf_TokenTitle}" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{l:Tr Hf_TokenDesc}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBox Classes="mono" Text="{Binding Token}" PlaceholderText="hf_xxxxxxxxxxxxxxxxx"
+                                     PasswordChar="•" RevealPassword="{Binding ShowToken}" />
+                            <Button Grid.Column="1" Command="{Binding ToggleShowTokenCommand}" ToolTip.Tip="{l:Tr Hf_ShowToken}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconEye}" />
+                            </Button>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="accent" Command="{Binding SaveTokenCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconSave}" />
+                                    <TextBlock Text="{l:Tr Common_Save}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding VerifyTokenCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                                    <TextBlock Text="{l:Tr Hf_Verify}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding OpenTokenPageCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                                    <TextBlock Text="{l:Tr Hf_CreateToken}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Classes="small" Classes.ok="{Binding TokenStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                   Classes.error="{Binding TokenStatusClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                   TextWrapping="Wrap" Text="{Binding TokenStatus}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Hf_TokenStorage}" />
+                    </StackPanel>
+                </Border>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

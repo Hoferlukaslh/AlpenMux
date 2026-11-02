@@ -1,0 +1,260 @@
+<!--
+    Fichier      :  MonitorWidgets.axaml
+    Projet       :  AlpenMux
+    Description  :  Contenu de chaque type de widget du moniteur (clé « Tile_<type> », voir MonitorLayout.Kinds).
+                    Chaque modèle reçoit un MonitorTileViewModel et remplit la carte que lui donne MonitorTileFrame.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="using:AlpenMux.ViewModels"
+                    xmlns:l="using:AlpenMux.Services"
+                    xmlns:c="using:AlpenMux.Controls">
+
+    <!-- GPU : carte complète -->
+    <DataTemplate x:Key="Tile_gpu" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconGpu}" />
+                <TextBlock Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <TextBlock Grid.Row="1" Classes="muted" IsVisible="{Binding NoGpu}" Text="{l:Tr Mon_NoGpu}" />
+            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="20" IsVisible="{Binding HasGpu}">
+                <Grid RowDefinitions="Auto,*">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Mon_GpuUtil}" />
+                        <TextBlock Grid.Column="1" Classes="stat" Text="{Binding Gpu.Util, StringFormat={}{0:0} %}" />
+                    </Grid>
+                    <c:Sparkline Grid.Row="1" Margin="0,6,0,0" Height="NaN" MinHeight="30" Data="{Binding Gpu.UtilHistory}" Stroke="{Binding Monitor.GpuBrush}" />
+                </Grid>
+                <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="VRAM" />
+                        <TextBlock Grid.Column="1" Classes="stat" Text="{Binding Gpu.MemText}" />
+                    </Grid>
+                    <c:Sparkline Grid.Row="1" Margin="0,6,0,0" Height="NaN" MinHeight="30" Data="{Binding Gpu.MemHistory}" Stroke="{Binding Monitor.VramBrush}" />
+                </Grid>
+            </Grid>
+            <UniformGrid Grid.Row="2" Columns="4" ColumnSpacing="10" IsVisible="{Binding HasGpu}">
+                <Border Classes="inset">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon muted" Text="{StaticResource IconThermo}" />
+                        <StackPanel>
+                            <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Temp}" />
+                            <TextBlock Classes="stat" Text="{Binding Gpu.TempText}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Classes="inset">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon muted" Text="{StaticResource IconLightning}" />
+                        <StackPanel>
+                            <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Power}" />
+                            <TextBlock Classes="stat" Text="{Binding Gpu.PowerText}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Classes="inset">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon muted" Text="{StaticResource IconArrows}" />
+                        <StackPanel>
+                            <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Fan}" />
+                            <TextBlock Classes="stat" Text="{Binding Gpu.FanText}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Classes="inset">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon muted" Text="{StaticResource IconPulse}" />
+                        <StackPanel>
+                            <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Clock}" />
+                            <TextBlock Classes="stat" Text="{Binding Gpu.ClockText}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+        </Grid>
+    </DataTemplate>
+
+    <!-- GPU : utilisation seule -->
+    <DataTemplate x:Key="Tile_gpuutil" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*" RowSpacing="6">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconPulse}" />
+                <TextBlock Grid.Column="1" Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Classes="value" Text="{Binding Gpu.Util, StringFormat={}{0:0} %}" />
+            </Grid>
+            <TextBlock Grid.Row="1" Classes="muted" IsVisible="{Binding NoGpu}" Text="{l:Tr Mon_NoGpu}" />
+            <c:Sparkline Grid.Row="1" Height="NaN" MinHeight="30" IsVisible="{Binding HasGpu}" Data="{Binding Gpu.UtilHistory}" Stroke="{Binding Monitor.GpuBrush}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- GPU : VRAM seule -->
+    <DataTemplate x:Key="Tile_gpuvram" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*" RowSpacing="6">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconMemory}" />
+                <TextBlock Grid.Column="1" Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Classes="stat" VerticalAlignment="Center" Text="{Binding Gpu.MemText}" />
+            </Grid>
+            <TextBlock Grid.Row="1" Classes="muted" IsVisible="{Binding NoGpu}" Text="{l:Tr Mon_NoGpu}" />
+            <c:Sparkline Grid.Row="1" Height="NaN" MinHeight="30" IsVisible="{Binding HasGpu}" Data="{Binding Gpu.MemHistory}" Stroke="{Binding Monitor.VramBrush}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- GPU : capteurs (température, puissance, ventilateur, fréquence) -->
+    <DataTemplate x:Key="Tile_gpustats" x:DataType="vm:MonitorTileViewModel">
+        <Grid ToolTip.Tip="{Binding DisplayTitle}">
+            <TextBlock Classes="muted" VerticalAlignment="Center" IsVisible="{Binding NoGpu}" Text="{l:Tr Mon_NoGpu}" />
+            <UniformGrid Columns="4" ColumnSpacing="10" VerticalAlignment="Center" IsVisible="{Binding HasGpu}">
+                <StackPanel>
+                    <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Temp}" />
+                    <TextBlock Classes="stat" Text="{Binding Gpu.TempText}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Power}" />
+                    <TextBlock Classes="stat" Text="{Binding Gpu.PowerText}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Fan}" />
+                    <TextBlock Classes="stat" Text="{Binding Gpu.FanText}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Margin="0" Text="{l:Tr Mon_Clock}" />
+                    <TextBlock Classes="stat" Text="{Binding Gpu.ClockText}" />
+                </StackPanel>
+            </UniformGrid>
+        </Grid>
+    </DataTemplate>
+
+    <!-- CPU -->
+    <DataTemplate x:Key="Tile_cpu" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="10">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconCpu}" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="muted small" Text="{Binding Monitor.CpuName}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Classes="value" Text="{Binding Monitor.Cpu, StringFormat={}{0:0} %}" />
+            </Grid>
+            <c:Sparkline Grid.Row="1" Height="NaN" MinHeight="40" Data="{Binding Monitor.CpuHistory}" Stroke="{Binding Monitor.CpuBrush}" />
+            <!-- Un cœur par colonne, sur toute la largeur de la carte -->
+            <ItemsControl Grid.Row="2" ItemsSource="{Binding Monitor.Cores}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1" ColumnSpacing="3" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CoreUsage">
+                        <Border Height="40" CornerRadius="3" Background="{DynamicResource SurfaceAlt}"
+                                ToolTip.Tip="{Binding Value, StringFormat={}{0:0} %}">
+                            <Border VerticalAlignment="Bottom" CornerRadius="3" Background="{Binding $parent[ItemsControl].((vm:MonitorTileViewModel)DataContext).Monitor.CpuBrush}"
+                                    Height="{Binding Value, Converter={x:Static l:Converters.PercentToHeight}}" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <UniformGrid Grid.Row="3" Columns="4" ColumnSpacing="10">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Mon_Temp}" />
+                    <TextBlock Classes="stat" Text="{Binding Monitor.CpuTemp}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Mon_Freq}" />
+                    <TextBlock Classes="stat" Text="{Binding Monitor.CpuFreq}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Mon_Load}" />
+                    <TextBlock Classes="stat" Text="{Binding Monitor.LoadAvg}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Mon_ThreadsLabel}" />
+                    <TextBlock Classes="stat" Text="{Binding Monitor.CoreCountText}" />
+                </StackPanel>
+            </UniformGrid>
+        </Grid>
+    </DataTemplate>
+
+    <!-- RAM / swap -->
+    <DataTemplate x:Key="Tile_ram" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconMemory}" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="muted small" Text="{Binding Monitor.RamText}" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Classes="value" Text="{Binding Monitor.RamPercent, StringFormat={}{0:0} %}" />
+            </Grid>
+            <c:Sparkline Grid.Row="1" Height="NaN" MinHeight="30" Data="{Binding Monitor.RamHistory}" Stroke="{Binding Monitor.RamBrush}" />
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="label" Margin="0" VerticalAlignment="Center" Text="Swap" />
+                <ProgressBar Grid.Column="1" Classes="thin" VerticalAlignment="Center" Value="{Binding Monitor.SwapPercent}" />
+                <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Monitor.SwapText}" />
+            </Grid>
+        </Grid>
+    </DataTemplate>
+
+    <!-- Réseau -->
+    <DataTemplate x:Key="Tile_net" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="6">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconGlobe}" />
+                <TextBlock Grid.Column="1" Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                <TextBlock Classes="stat" Text="{Binding Monitor.NetRx, StringFormat=↓ {0}}" />
+                <TextBlock Grid.Column="1" Classes="stat muted" Text="{Binding Monitor.NetTx, StringFormat=↑ {0}}" />
+            </Grid>
+            <c:Sparkline Grid.Row="2" Height="NaN" MinHeight="24" Maximum="0" Data="{Binding Monitor.NetHistory}" Stroke="{Binding Monitor.NetBrush}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- Disque des modèles -->
+    <DataTemplate x:Key="Tile_disk" x:DataType="vm:MonitorTileViewModel">
+        <StackPanel Spacing="6" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconDisk}" />
+                <TextBlock Grid.Column="1" Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+            </Grid>
+            <ProgressBar Value="{Binding Monitor.DiskPercent}" />
+            <TextBlock Classes="muted small" Text="{Binding Monitor.DiskText}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <!-- Processus GPU -->
+    <DataTemplate x:Key="Tile_gpuproc" x:DataType="vm:MonitorTileViewModel">
+        <Grid RowDefinitions="Auto,*" RowSpacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="icon accent" Text="{StaticResource IconList}" />
+                <TextBlock Classes="h2" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Classes="muted" IsVisible="{Binding !Monitor.HasGpuProcesses}" Text="{l:Tr Mon_NoGpuProcesses}" />
+                    <Grid ColumnDefinitions="80,*,2*,80,110" IsVisible="{Binding Monitor.HasGpuProcesses}">
+                        <TextBlock Classes="label" Text="PID" />
+                        <TextBlock Grid.Column="1" Classes="label" Text="{l:Tr Mon_Process}" />
+                        <TextBlock Grid.Column="2" Classes="label" Text="{l:Tr Mon_Owner}" />
+                        <TextBlock Grid.Column="3" Classes="label" Text="GPU" />
+                        <TextBlock Grid.Column="4" Classes="label" Text="VRAM" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Monitor.GpuProcesses}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GpuProcessRow">
+                                <Grid ColumnDefinitions="80,*,2*,80,110" Margin="0,3">
+                                    <TextBlock Classes="mono" Text="{Binding Pid}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Classes="muted" Text="{Binding Owner}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Gpu}" />
+                                    <TextBlock Grid.Column="4" FontWeight="Bold" Text="{Binding Memory}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </DataTemplate>
+</ResourceDictionary>

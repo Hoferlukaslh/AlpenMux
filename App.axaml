@@ -1,0 +1,173 @@
+<!--
+    Fichier      :  App.axaml
+    Projet       :  AlpenMux
+
+    Description  :  Ressources globales : polices, icônes Phosphor, couleurs des thèmes clair/sombre.
+                    Les styles des contrôles sont dans Styles/AppStyles.axaml.
+-->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             x:Class="AlpenMux.App"
+             RequestedThemeVariant="Default">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Polices -->
+            <FontFamily x:Key="Helvetica">avares://alpenmux/Assets/Fonts#Helvetica</FontFamily>
+            <FontFamily x:Key="Phosphor">avares://alpenmux/Assets/Fonts/Phosphor.ttf#Phosphor</FontFamily>
+            <FontFamily x:Key="PhosphorFill">avares://alpenmux/Assets/Fonts/Phosphor-Fill.ttf#Phosphor-Fill</FontFamily>
+            <FontFamily x:Key="Mono">DejaVu Sans Mono, Noto Sans Mono, Liberation Mono, monospace</FontFamily>
+
+            <CornerRadius x:Key="CardRadius">12</CornerRadius>
+            <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
+
+            <!-- Icônes Phosphor (codes Unicode de la police) -->
+            <x:String x:Key="IconHome">&#xE2C2;</x:String>
+            <x:String x:Key="IconSetup">&#xE390;</x:String>
+            <x:String x:Key="IconModels">&#xE1DA;</x:String>
+            <x:String x:Key="IconServers">&#xE3FE;</x:String>
+            <x:String x:Key="IconMonitor">&#xE628;</x:String>
+            <x:String x:Key="IconChat">&#xE16C;</x:String>
+            <x:String x:Key="IconSettings">&#xE270;</x:String>
+            <x:String x:Key="IconCpu">&#xE610;</x:String>
+            <x:String x:Key="IconMemory">&#xE9C4;</x:String>
+            <x:String x:Key="IconGpu">&#xE612;</x:String>
+            <x:String x:Key="IconTerminal">&#xEAE8;</x:String>
+            <x:String x:Key="IconDownload">&#xE20C;</x:String>
+            <x:String x:Key="IconCloudDown">&#xE1AC;</x:String>
+            <x:String x:Key="IconPlay">&#xE3D0;</x:String>
+            <x:String x:Key="IconPause">&#xE39E;</x:String>
+            <x:String x:Key="IconStop">&#xE46C;</x:String>
+            <x:String x:Key="IconSun">&#xE472;</x:String>
+            <x:String x:Key="IconMoon">&#xE330;</x:String>
+            <x:String x:Key="IconHalf">&#xE18C;</x:String>
+            <x:String x:Key="IconTranslate">&#xE4A2;</x:String>
+            <x:String x:Key="IconFolder">&#xE24A;</x:String>
+            <x:String x:Key="IconFolderOpen">&#xE256;</x:String>
+            <x:String x:Key="IconTrash">&#xE4A6;</x:String>
+            <x:String x:Key="IconKey">&#xE2D6;</x:String>
+            <x:String x:Key="IconDisk">&#xE2A0;</x:String>
+            <x:String x:Key="IconRefresh">&#xE036;</x:String>
+            <x:String x:Key="IconArrows">&#xE094;</x:String>
+            <x:String x:Key="IconCheck">&#xE184;</x:String>
+            <x:String x:Key="IconWarning">&#xE4E0;</x:String>
+            <x:String x:Key="IconError">&#xE4F8;</x:String>
+            <x:String x:Key="IconInfo">&#xE2CE;</x:String>
+            <x:String x:Key="IconSearch">&#xE30C;</x:String>
+            <x:String x:Key="IconPlus">&#xE3D4;</x:String>
+            <x:String x:Key="IconClose">&#xE4F6;</x:String>
+            <x:String x:Key="IconSidebar">&#xEC24;</x:String>
+            <x:String x:Key="IconCollapse">&#xE128;</x:String>
+            <x:String x:Key="IconThermo">&#xE5C6;</x:String>
+            <x:String x:Key="IconLightning">&#xE2DE;</x:String>
+            <x:String x:Key="IconChart">&#xE154;</x:String>
+            <x:String x:Key="IconCopy">&#xE1CA;</x:String>
+            <x:String x:Key="IconSave">&#xE248;</x:String>
+            <x:String x:Key="IconSend">&#xE396;</x:String>
+            <x:String x:Key="IconEye">&#xE220;</x:String>
+            <x:String x:Key="IconEyeSlash">&#xE224;</x:String>
+            <x:String x:Key="IconGlobe">&#xE288;</x:String>
+            <x:String x:Key="IconPulse">&#xE000;</x:String>
+            <x:String x:Key="IconList">&#xE2F0;</x:String>
+            <x:String x:Key="IconStack">&#xE466;</x:String>
+            <x:String x:Key="IconSliders">&#xE432;</x:String>
+            <x:String x:Key="IconBroom">&#xEC54;</x:String>
+            <x:String x:Key="IconLink">&#xE2E2;</x:String>
+            <x:String x:Key="IconClock">&#xE19A;</x:String>
+            <x:String x:Key="IconRobot">&#xE762;</x:String>
+            <x:String x:Key="IconDatabase">&#xE1DE;</x:String>
+            <x:String x:Key="IconExternal">&#xE5DE;</x:String>
+            <x:String x:Key="IconPower">&#xE3DA;</x:String>
+            <x:String x:Key="IconPuzzle">&#xE596;</x:String>
+            <x:String x:Key="IconWrench">&#xE5D4;</x:String>
+            <x:String x:Key="IconStar">&#xE46A;</x:String>
+            <x:String x:Key="IconSpeaker">&#xE44A;</x:String>
+            <x:String x:Key="IconWaveform">&#xE802;</x:String>
+            <x:String x:Key="IconImage">&#xE2CA;</x:String>
+            <x:String x:Key="IconFile">&#xE23A;</x:String>
+            <x:String x:Key="IconBulb">&#xE2DC;</x:String>
+            <x:String x:Key="IconCaretRight">&#xE13A;</x:String>
+            <x:String x:Key="IconCaretLeft">&#xE138;</x:String>
+            <x:String x:Key="IconCaretDown">&#xE136;</x:String>
+            <x:String x:Key="IconHourglass">&#xE19A;</x:String>
+
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="SystemAccentColor">#2A7FB8</Color>
+                    <SolidColorBrush x:Key="BrandMux">#7CC4E8</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandGlow">#FF8A3D</SolidColorBrush>
+                    <SolidColorBrush x:Key="AppBackground">#0F1117</SolidColorBrush>
+                    <SolidColorBrush x:Key="SidebarBackground">#13151D</SolidColorBrush>
+                    <SolidColorBrush x:Key="Surface">#181B24</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceAlt">#1F2330</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceBorder">#2A2F3D</SolidColorBrush>
+                    <SolidColorBrush x:Key="ConsoleBackground">#0A0C10</SolidColorBrush>
+                    <SolidColorBrush x:Key="ConsoleForeground">#C9D1D9</SolidColorBrush>
+                    <SolidColorBrush x:Key="PrimaryForeground">#E8EAF0</SolidColorBrush>
+                    <SolidColorBrush x:Key="SecondaryForeground">#9AA1B2</SolidColorBrush>
+                    <SolidColorBrush x:Key="Accent">#2A7FB8</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentSoft">#14334A</SolidColorBrush>
+                    <SolidColorBrush x:Key="OkBrush">#3FB950</SolidColorBrush>
+                    <SolidColorBrush x:Key="WarnBrush">#D29922</SolidColorBrush>
+                    <SolidColorBrush x:Key="ErrorBrush">#F85149</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartCpu">#4F8CFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartRam">#A371F7</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartGpu">#3FB950</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartVram">#F0883E</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartNet">#39C5CF</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramOther">#4A5162</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramServer">#8B5CF6</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramWeights">#4F8CFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramOverhead">#2D9CDB</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramKv">#3FB950</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramKvSpare">#2A6E3A</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramFree">#252A36</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemAccentColor">#1F78AB</Color>
+                    <SolidColorBrush x:Key="BrandMux">#1F78AB</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandGlow">#E8641A</SolidColorBrush>
+                    <SolidColorBrush x:Key="AppBackground">#F3F5F9</SolidColorBrush>
+                    <SolidColorBrush x:Key="SidebarBackground">#E9ECF2</SolidColorBrush>
+                    <SolidColorBrush x:Key="Surface">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceAlt">#EEF1F6</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceBorder">#DCE1E9</SolidColorBrush>
+                    <SolidColorBrush x:Key="ConsoleBackground">#1B1F27</SolidColorBrush>
+                    <SolidColorBrush x:Key="ConsoleForeground">#D8DEE9</SolidColorBrush>
+                    <SolidColorBrush x:Key="PrimaryForeground">#1C1F26</SolidColorBrush>
+                    <SolidColorBrush x:Key="SecondaryForeground">#5F6878</SolidColorBrush>
+                    <SolidColorBrush x:Key="Accent">#1F78AB</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentSoft">#D9ECF7</SolidColorBrush>
+                    <SolidColorBrush x:Key="OkBrush">#1A7F37</SolidColorBrush>
+                    <SolidColorBrush x:Key="WarnBrush">#9A6700</SolidColorBrush>
+                    <SolidColorBrush x:Key="ErrorBrush">#CF222E</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartCpu">#2563EB</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartRam">#8250DF</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartGpu">#1A7F37</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartVram">#BC4C00</SolidColorBrush>
+                    <SolidColorBrush x:Key="ChartNet">#1B7C83</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramOther">#A3ACBA</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramServer">#8250DF</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramWeights">#2563EB</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramOverhead">#0EA5E9</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramKv">#1A7F37</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramKvSpare">#7FCF95</SolidColorBrush>
+                    <SolidColorBrush x:Key="VramFree">#E3E7EE</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <!-- Couleur d'accent fixe (bleu glacier du logo) : sinon Fluent reprend celle du bureau -->
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Light" Accent="#1F78AB" />
+                <ColorPaletteResources x:Key="Dark" Accent="#2A7FB8" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+        <StyleInclude Source="avares://alpenmux/Styles/AppStyles.axaml" />
+    </Application.Styles>
+</Application>

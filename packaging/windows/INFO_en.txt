@@ -1,0 +1,28 @@
+﻿ALPENMUX — WHAT WILL BE INSTALLED
+
+AlpenMux installs vLLM, downloads AI models from Hugging Face and runs OpenAI-compatible servers, all reachable through a single address (http://127.0.0.1:9000/v1).
+
+1. THE APPLICATION
+   In the chosen folder (default: C:\Program Files\AlpenMux), with a Start menu shortcut and, if you want, a desktop shortcut. No .NET installation is needed.
+
+2. WSL2 (WINDOWS SUBSYSTEM FOR LINUX)
+   vLLM only runs on Linux, so AlpenMux runs it in WSL2, Microsoft's official solution. If WSL2 is not enabled yet, this installer enables it ("WSL2" component, ticked by default). Windows may then ask for a restart.
+
+3. ON FIRST START
+   AlpenMux's Setup page does the rest with one click on "Install everything":
+     - a dedicated Linux distribution "AlpenMux" (Ubuntu 24.04, about 1 GB), separate from your other WSL distributions, if any;
+     - the tools (git, compiler, uv), Python and vLLM (several GB to download);
+     - optional: vLLM-Omni (speech, images), llama.cpp for Windows (GGUF models) and stable-diffusion.cpp for Windows (images from single files).
+   The NVIDIA GPU is used directly through the Windows driver: nothing to install in Linux. A recent NVIDIA driver is recommended.
+
+4. YOUR DATA
+   Settings: %APPDATA%\alpenmux (the Hugging Face token is stored there if you enter one).
+   Server history, llama.cpp, stable-diffusion.cpp, generated audio and images, distribution disk: %LOCALAPPDATA%\alpenmux.
+   Models: %USERPROFILE%\models by default (can be changed).
+   No data is sent anywhere except Hugging Face, GitHub (llama.cpp, stable-diffusion.cpp), recipes.vllm.ai and the sources of the packages you install.
+
+5. NETWORK
+   The single address only listens on this computer (127.0.0.1): the installer reserves port 9000 for it.
+
+6. UNINSTALLING
+   From Windows "Installed apps". Uninstalling also offers to delete your settings, the history and the "AlpenMux" WSL distribution (vLLM and its packages). Downloaded models are never deleted.

@@ -1,0 +1,1008 @@
+<!--
+    Fichier      :  LaunchPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Serveurs vLLM : à gauche la liste (nouveau serveur + serveurs lancés),
+                    à droite le formulaire de lancement ou le détail du serveur sélectionné
+                    (progression, métriques en temps réel, console interactive).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.LaunchPage"
+             x:DataType="vm:LaunchViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.help">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style Selector="Border.metric">
+            <Setter Property="Background" Value="{DynamicResource SurfaceAlt}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="260,*">
+        <!-- ======================================== Liste des serveurs -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="14,28,14,14" RowSpacing="12">
+                <TextBlock Classes="h1" Text="{l:Tr Nav_Servers}" />
+                <Button Grid.Row="1" Classes="accent" HorizontalAlignment="Stretch" Command="{Binding ShowNewServerCommand}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconPlus}" />
+                        <TextBlock Text="{l:Tr Launch_NewServer}" />
+                    </StackPanel>
+                </Button>
+                <ListBox Grid.Row="2" Classes="plain" ItemsSource="{Binding Instances}" SelectedItem="{Binding SelectedInstance}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:InstanceViewModel">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="10,8">
+                                <TextBlock Classes="icon fill" VerticalAlignment="Top" Margin="0,2,0,0"
+                                           Classes.ok="{Binding IsReady}" Classes.warn="{Binding IsStarting}"
+                                           Classes.error="{Binding StateClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding StateIcon}" />
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <TextBlock FontWeight="Bold" Text="{Binding ServedName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted small" Text="{Binding StatusText}" />
+                                    <TextBlock Classes="mono muted" FontSize="11" Text="{Binding Port, StringFormat=:{0}}" />
+                                    <ProgressBar Classes="thin" IsVisible="{Binding IsStarting}"
+                                                 Value="{Binding Progress.Percent}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Favoris -->
+                <StackPanel Grid.Row="3" Spacing="6" IsVisible="{Binding HasFavorites}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="icon fill warn" FontSize="15" Text="{StaticResource IconStar}" />
+                        <TextBlock Classes="h3" VerticalAlignment="Center" Text="{l:Tr Fav_Title}" />
+                    </StackPanel>
+                    <ScrollViewer MaxHeight="260">
+                        <ItemsControl ItemsSource="{Binding Favorites}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="l:FavoriteConfig">
+                                    <Border Classes="inset" Margin="0,0,0,6" Padding="8,6">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="2">
+                                            <StackPanel>
+                                                <TextBlock FontWeight="Bold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted small" Text="{Binding Config.ModelRepo}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Classes="flat" ToolTip.Tip="{l:Tr Fav_Launch}"
+                                                    Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).LaunchFavoriteCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Classes="icon fill ok" FontSize="15" Text="{StaticResource IconPlay}" />
+                                            </Button>
+                                            <Button Grid.Column="2" Classes="flat" ToolTip.Tip="{l:Tr Fav_Load}"
+                                                    Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).LoadFavoriteCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Classes="icon" FontSize="15" Text="{StaticResource IconSliders}" />
+                                            </Button>
+                                            <Button Grid.Column="3" Classes="flat" ToolTip.Tip="{l:Tr Common_Delete}"
+                                                    Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).DeleteFavoriteCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Classes="icon error" FontSize="15" Text="{StaticResource IconTrash}" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ======================================== Nouveau serveur -->
+        <ScrollViewer Grid.Column="1" IsVisible="{Binding IsNewServerView}">
+            <StackPanel Margin="24,28,28,28" Spacing="14" MaxWidth="980" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="h1" Text="{l:Tr Launch_Title}" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap" Text="{l:Tr Launch_Subtitle}" />
+                </StackPanel>
+
+                <!-- vLLM absent -->
+                <Border Classes="card" IsVisible="{Binding VllmMissing}" BorderBrush="{DynamicResource ErrorBrush}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <TextBlock Classes="icon big error" Text="{StaticResource IconWarning}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Launch_NoVllm}" />
+                        <Button Grid.Column="2" Classes="accent" Command="{Binding GoToSetupCommand}" Content="{l:Tr Dash_OpenSetup}" />
+                    </Grid>
+                </Border>
+
+                <!-- llama.cpp absent (modèle GGUF choisi) -->
+                <Border Classes="card" IsVisible="{Binding LlamaMissing}" BorderBrush="{DynamicResource ErrorBrush}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <TextBlock Classes="icon big error" Text="{StaticResource IconWarning}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Launch_NoLlama}" />
+                        <Button Grid.Column="2" Classes="accent" Command="{Binding GoToSetupCommand}" Content="{l:Tr Dash_OpenSetup}" />
+                    </Grid>
+                </Border>
+
+                <!-- stable-diffusion.cpp absent (fichier unique d'images choisi) -->
+                <Border Classes="card" IsVisible="{Binding SdCppMissing}" BorderBrush="{DynamicResource ErrorBrush}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <TextBlock Classes="icon big error" Text="{StaticResource IconWarning}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Launch_NoSdCpp}" />
+                        <Button Grid.Column="2" Classes="accent" Command="{Binding GoToSetupCommand}" Content="{l:Tr Dash_OpenSetup}" />
+                    </Grid>
+                </Border>
+
+                <!-- Aucun modèle -->
+                <Border Classes="card" IsVisible="{Binding !HasModels}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <TextBlock Classes="icon big muted" Text="{StaticResource IconModels}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Launch_NoModels}" />
+                        <Button Grid.Column="2" Classes="accent" Command="{Binding GoToModelsCommand}" Content="{l:Tr Dash_ManageModels}" />
+                    </Grid>
+                </Border>
+
+                <!-- Modèle -->
+                <Border Classes="card" IsVisible="{Binding HasModels}">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconModels}" />
+                            <TextBlock Classes="h2" Text="{l:Tr Launch_Model}" />
+                        </StackPanel>
+                        <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="l:ModelInfo">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock FontWeight="Bold" Text="{Binding Repo}" />
+                                        <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Quantization}" />
+                                        <TextBlock Classes="small error" VerticalAlignment="Center" Text="✘" IsVisible="{Binding IsBroken}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <WrapPanel ItemSpacing="22" IsVisible="{Binding SelectedModel, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="{l:Tr Model_Arch}" />
+                                <TextBlock Classes="small" Text="{Binding SelectedModel.Architecture, FallbackValue=''}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="{l:Tr Model_Quant}" />
+                                <TextBlock Classes="small" Text="{Binding SelectedModel.Quantization, FallbackValue=''}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="{l:Tr Model_Context}" />
+                                <TextBlock Classes="small" Text="{Binding SelectedModel.MaxPositions, FallbackValue='', TargetNullValue=—}" />
+                            </StackPanel>
+                        </WrapPanel>
+                        <TextBlock Classes="small error" TextWrapping="Wrap" Text="{Binding ModelProblem}"
+                                   IsVisible="{Binding ModelProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Classes="small warn" TextWrapping="Wrap" Text="{Binding ModelWarning}"
+                                   IsVisible="{Binding ModelWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Border Classes="inset">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                <TextBlock Classes="icon fill" VerticalAlignment="Top"
+                                           Classes.ok="{Binding PlanClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                           Classes.warn="{Binding PlanClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                           Classes.error="{Binding PlanClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding PlanIcon}" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{Binding PlanText}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- GPU et mémoire -->
+                <Border Classes="card" IsVisible="{Binding HasModels}">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="icon accent" Text="{StaticResource IconGpu}" />
+                                <TextBlock Classes="h2" Text="{l:Tr Launch_Memory}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding RecalculateCommand}" ToolTip.Tip="{l:Tr Launch_Recalculate_Tip}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconArrows}" />
+                                    <TextBlock Text="{l:Tr Launch_Recalculate}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Répartition de la VRAM : occupée, réservée par ce lancement (pointillés), libre ensuite -->
+                        <StackPanel Spacing="8" IsVisible="{Binding HasVram}">
+                            <TextBlock Classes="label" Margin="0" Text="{Binding VramTitle}" />
+                            <c:VramPanel Segments="{Binding VramSegments}" Total="{Binding VramTotal}" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock Classes="icon fill" VerticalAlignment="Top"
+                                           Classes.ok="{Binding VramStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                           Classes.warn="{Binding VramStatusClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                           Classes.error="{Binding VramStatusClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding VramStatusIcon}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" TextWrapping="Wrap"
+                                           Classes.ok="{Binding VramStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                           Classes.warn="{Binding VramStatusClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                           Classes.error="{Binding VramStatusClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding VramStatus}" />
+                            </Grid>
+                            <Button Classes="accent" HorizontalAlignment="Left" IsVisible="{Binding HasVramFix}" Command="{Binding ApplyVramFixCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconLightning}" />
+                                    <TextBlock Text="{Binding VramFixText}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Prévision de la RAM : déjà utilisée, ce que le lancement y mettra, libre ensuite -->
+                        <StackPanel Spacing="8" IsVisible="{Binding HasRam}">
+                            <TextBlock Classes="label" Margin="0" Text="{Binding RamTitle}" />
+                            <c:VramPanel Segments="{Binding RamSegments}" Total="{Binding RamTotal}" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock Classes="icon fill" VerticalAlignment="Top"
+                                           Classes.ok="{Binding RamStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                           Classes.warn="{Binding RamStatusClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                           Classes.error="{Binding RamStatusClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding RamStatusIcon}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" TextWrapping="Wrap"
+                                           Classes.ok="{Binding RamStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                           Classes.warn="{Binding RamStatusClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                           Classes.error="{Binding RamStatusClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                                           Text="{Binding RamStatus}" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Part du modèle sur le GPU (le reste en RAM), comme dans LM Studio -->
+                        <StackPanel IsVisible="{Binding ShowGpuPercent}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" Text="{l:Tr Launch_GpuPercent}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding GpuPercentText}" />
+                            </Grid>
+                            <Slider Minimum="5" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding GpuPercent}" />
+                            <TextBlock Classes="help" Text="{l:Tr Launch_GpuPercent_Help}" />
+                        </StackPanel>
+
+                        <Border Classes="inset" IsVisible="{Binding IsMultiGpu}">
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="label" Margin="0" VerticalAlignment="Center" Text="{l:Tr Launch_GpusToUse}" />
+                                    <Button Grid.Column="1" Classes="flat" Command="{Binding AutoSelectGpusCommand}">
+                                        <StackPanel Classes="btn">
+                                            <TextBlock Classes="icon" FontSize="15" Text="{StaticResource IconLightning}" />
+                                            <TextBlock Classes="small" Text="{l:Tr Launch_AutoGpus}" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Gpus}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:GpuChoice">
+                                            <CheckBox IsChecked="{Binding IsSelected}">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding Label}" />
+                                                    <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Memory}" />
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="small" Text="{Binding GpuText}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="24" IsVisible="{Binding ShowMemorySliders}">
+                            <StackPanel>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="label" Text="{l:Tr Launch_Share}" />
+                                    <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding ShareText}" />
+                                </Grid>
+                                <Slider Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding VramShare}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Share_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="label" Text="--gpu-memory-utilization" />
+                                    <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding UtilText}" />
+                                </Grid>
+                                <Slider Minimum="0.05" Maximum="0.98" TickFrequency="0.01" IsSnapToTickEnabled="True" Value="{Binding GpuMemoryUtilization}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Util_Help}" IsVisible="{Binding !IsOmniMode}" />
+                                <TextBlock Classes="help" Text="{l:Tr Omni_Util_Help}" IsVisible="{Binding IsOmniMode}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Classes="inset" IsVisible="{Binding IsOmniMode}">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock Classes="icon accent" VerticalAlignment="Top" Text="{StaticResource IconStack}" />
+                                <TextBlock Grid.Column="1" Classes="small" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding OmniStagesText}" />
+                            </Grid>
+                        </Border>
+                        <!-- Modèle converti dont le fichier d'origine est resté : moteur au choix -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowEngineChoice}">
+                            <TextBlock Classes="label" Text="{l:Tr Launch_Engine}" />
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <RadioButton GroupName="engine" Content="vLLM-Omni (diffusers)" IsChecked="{Binding !UseSdCpp}" />
+                                <RadioButton GroupName="engine" Content="{l:Tr Launch_Engine_SdCpp}" IsChecked="{Binding UseSdCpp}" />
+                            </StackPanel>
+                            <TextBlock Classes="help" Text="{l:Tr Launch_Engine_Help}" />
+                        </StackPanel>
+                        <!-- stable-diffusion.cpp : fichier unique lu directement -->
+                        <StackPanel Spacing="12" IsVisible="{Binding IsSdCpp}">
+                            <Border Classes="inset">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <TextBlock Classes="icon accent" VerticalAlignment="Top" Text="{StaticResource IconInfo}" />
+                                    <TextBlock Grid.Column="1" Classes="small" TextWrapping="Wrap" Text="{l:Tr Launch_SdCpp_Info}" />
+                                </Grid>
+                            </Border>
+                            <StackPanel Spacing="4">
+                                <CheckBox IsChecked="{Binding SdOffload}" Content="{l:Tr Launch_SdOffload}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_SdOffload_Help}" />
+                            </StackPanel>
+                            <!-- Transformer seul (FLUX.2, Z-Image) : VAE et encodeur de texte, à choisir ou à télécharger -->
+                            <StackPanel Spacing="10" IsVisible="{Binding SdComponentsNeeded}">
+                                <TextBlock Classes="label" Text="{l:Tr Launch_SdComponents_Title}" />
+                                <TextBlock Classes="help" TextWrapping="Wrap" Text="{l:Tr Launch_SdComponents_Help}" />
+                                <Button Content="{l:Tr Launch_SdAutoDownload}" Command="{Binding DownloadSdComponentsCommand}"
+                                        IsVisible="{Binding SdAutoAvailable}" HorizontalAlignment="Left" />
+                                <TextBlock Classes="help" TextWrapping="Wrap" Text="{l:Tr Launch_SdAutoHelp}" IsVisible="{Binding SdAutoAvailable}" />
+                                <StackPanel Spacing="4" IsVisible="{Binding SdBusy}">
+                                    <ProgressBar Value="{Binding SdProgress.Percent}" IsIndeterminate="{Binding SdProgress.IsIndeterminate}"
+                                                 ShowProgressText="True" Height="18" />
+                                    <TextBlock Classes="muted small" Text="{Binding SdProgress.Detail}" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="label" Text="--vae" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBox Classes="mono" Text="{Binding SdVae}" PlaceholderText="{l:Tr Launch_SdVae_Placeholder}" />
+                                        <Button Grid.Column="1" Content="{l:Tr Launch_SdBrowse}" Command="{Binding PickSdVaeCommand}" />
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="label" Text="--llm" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBox Classes="mono" Text="{Binding SdLlm}" PlaceholderText="{l:Tr Launch_SdLlm_Placeholder}" />
+                                        <Button Grid.Column="1" Content="{l:Tr Launch_SdBrowse}" Command="{Binding PickSdLlmCommand}" />
+                                    </Grid>
+                                </StackPanel>
+                                <TextBlock Classes="help" TextWrapping="Wrap" Text="{l:Tr Launch_SdMissing}" IsVisible="{Binding !SdComponentsReady}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- llama.cpp : contexte, couches sur le GPU, cache KV -->
+                        <StackPanel Spacing="12" IsVisible="{Binding IsLlama}">
+                            <Border Classes="inset">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <TextBlock Classes="icon accent" VerticalAlignment="Top" Text="{StaticResource IconInfo}" />
+                                    <TextBlock Grid.Column="1" Classes="small" TextWrapping="Wrap" Text="{l:Tr Launch_Llama_Info}" />
+                                </Grid>
+                            </Border>
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="-c (contexte)" />
+                                    <TextBox Text="{Binding MaxModelLen}" PlaceholderText="4096" />
+                                    <TextBlock Classes="help" Text="{l:Tr Launch_LlamaCtx_Help}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Classes="label" Text="-ngl" />
+                                    <TextBox Text="{Binding LlamaGpuLayers}" PlaceholderText="{l:Tr Launch_AllLayers}" />
+                                    <TextBlock Classes="help" Text="{l:Tr Launch_LlamaNgl_Help}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="label" Text="--cache-type-k / -v" />
+                                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding LlamaKvTypes}" SelectedItem="{Binding LlamaKvType}" />
+                                    <TextBlock Classes="help" Text="{l:Tr Launch_LlamaKv_Help}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="4">
+                                <CheckBox IsChecked="{Binding LlamaEmbedding}" Content="{l:Tr Launch_LlamaEmbedding}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_LlamaEmbedding_Help}" />
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="--api-key" />
+                                    <TextBox Classes="mono" Text="{Binding ApiKey}" PlaceholderText="{l:Tr Launch_ApiKey_Placeholder}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Classes="label" Text="{l:Tr Launch_Extra}" />
+                                    <TextBox Classes="mono" Text="{Binding ExtraArgs}" PlaceholderText="--jinja -np 2" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16" IsVisible="{Binding ShowVllmMemory}">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="--max-model-len" />
+                                <TextBox Text="{Binding MaxModelLen}" PlaceholderText="auto" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Ctx_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Classes="label" Text="--kv-cache-dtype" />
+                                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding KvCacheDtypes}" SelectedItem="{Binding KvCacheDtype}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Kv_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="--enforce-eager" />
+                                <CheckBox IsChecked="{Binding EnforceEager}" Content="{l:Tr Launch_Eager}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Eager_Help}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Réseau -->
+                <Border Classes="card" IsVisible="{Binding HasModels}">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconGlobe}" />
+                            <TextBlock Classes="h2" Text="{l:Tr Launch_Network}" />
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,120,*" ColumnSpacing="16">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="--host" />
+                                <TextBox Classes="mono" Text="{Binding Host}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Host_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Classes="label" Text="--port" />
+                                <TextBox Classes="mono" Text="{Binding Port}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="--served-model-name" />
+                                <TextBox Classes="mono" Text="{Binding ServedName}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Name_Help}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Fonctions de vLLM selon le modèle -->
+                <Border Classes="card" IsVisible="{Binding ShowVllmAdvanced}">
+                    <StackPanel Spacing="14">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconPuzzle}" />
+                            <TextBlock Classes="h2" Text="{l:Tr Launch_Features}" />
+                        </StackPanel>
+
+                        <!-- Recette officielle vLLM -->
+                        <Border Classes="inset" IsVisible="{Binding HasRecipe}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                                <TextBlock Classes="icon accent" VerticalAlignment="Top" Text="{StaticResource IconStar}" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Classes="small" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding RecipeTitle}" />
+                                    <TextBlock Classes="mono muted" FontSize="11" TextWrapping="Wrap" Text="{Binding RecipeSummary}" IsVisible="{Binding HasRecipeArgs}" />
+                                    <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Launch_Recipe_NoArgs}" IsVisible="{Binding !HasRecipeArgs}" />
+                                    <TextBlock Classes="small" TextWrapping="Wrap" Foreground="{DynamicResource Accent}" Text="{Binding RecipeStatus}" IsVisible="{Binding HasRecipeStatus}" />
+                                </StackPanel>
+                                <Button Grid.Column="2" VerticalAlignment="Top" IsVisible="{Binding HasRecipeArgs}" Command="{Binding ApplyRecipeCommand}"
+                                        ToolTip.Tip="{l:Tr Launch_Recipe_Apply_Tip}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconLightning}" />
+                                        <TextBlock Text="{l:Tr Launch_Recipe_Apply}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="3" Classes="flat" VerticalAlignment="Top" Command="{Binding OpenRecipeCommand}" ToolTip.Tip="{l:Tr Launch_Recipe_Open}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Raisonnement et appels d'outils -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="16" IsVisible="{Binding ShowParsers}">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="--reasoning-parser" />
+                                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding ReasoningParsers}" SelectedItem="{Binding ReasoningParser}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Reasoning_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Classes="label" Text="--tool-call-parser" />
+                                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding ToolParsers}" SelectedItem="{Binding ToolCallParser}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Tool_Help}" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="small muted" TextWrapping="Wrap" Text="{Binding ParserHint}" IsVisible="{Binding ShowParsers}" />
+
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowCpuOffload}">
+                            <CheckBox IsChecked="{Binding CpuOffload}" Content="{l:Tr Launch_CpuOffload}" />
+                            <TextBlock Classes="help" Text="{Binding CpuOffloadHelp}" />
+                        </StackPanel>
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowTextOnly}">
+                            <CheckBox IsChecked="{Binding TextOnly}" Content="{l:Tr Launch_TextOnly}" />
+                            <TextBlock Classes="help" Text="{Binding TextOnlyHelp}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <CheckBox IsChecked="{Binding SleepMode}" Content="{l:Tr Launch_Sleep}" />
+                            <TextBlock Classes="help" Text="{l:Tr Launch_Sleep_Help}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowMtp}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <CheckBox IsChecked="{Binding MtpEnabled}" Content="{l:Tr Launch_Mtp}" />
+                                <TextBox Width="70" Text="{Binding MtpTokens}" IsEnabled="{Binding MtpEnabled}" ToolTip.Tip="num_speculative_tokens" />
+                            </StackPanel>
+                            <TextBlock Classes="help" Text="{l:Tr Launch_Mtp_Help}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowLoras}">
+                            <TextBlock Classes="label" Text="{l:Tr Launch_Loras}" />
+                            <ItemsControl ItemsSource="{Binding Loras}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:LoraChoice">
+                                        <CheckBox IsChecked="{Binding IsSelected}" Content="{Binding Label}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Classes="help" Text="{l:Tr Launch_Loras_Help}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Avancé -->
+                <Expander IsVisible="{Binding ShowVllmAdvanced}" HorizontalAlignment="Stretch" IsExpanded="{Binding ShowAdvanced}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                            <TextBlock Text="{l:Tr Launch_Advanced}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Expander.Header>
+                    <StackPanel Spacing="14">
+                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="16">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="--tensor-parallel-size" />
+                                <TextBox Text="{Binding TensorParallel}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Tp_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Classes="label" Text="--pipeline-parallel-size" />
+                                <TextBox Text="{Binding PipelineParallel}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Pp_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="--max-num-seqs" />
+                                <TextBox Text="{Binding MaxNumSeqs}" PlaceholderText="auto" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Seqs_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Classes="label" Text="--dtype" />
+                                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Dtypes}" SelectedItem="{Binding Dtype}" />
+                            </StackPanel>
+                        </Grid>
+                        <WrapPanel ItemSpacing="24">
+                            <CheckBox IsChecked="{Binding PrefixCaching}" Content="{l:Tr Launch_PrefixCaching}" />
+                            <CheckBox IsChecked="{Binding TrustRemoteCode}" Content="{l:Tr Launch_TrustRemote}" />
+                            <CheckBox IsChecked="{Binding Omni}" Content="{l:Tr Launch_Omni}" IsVisible="{Binding ShowOmniOption}" />
+                        </WrapPanel>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="--tokenizer" />
+                                <TextBox Classes="mono" Text="{Binding Tokenizer}" PlaceholderText="{l:Tr Launch_Tokenizer_Placeholder}" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_Tokenizer_Help}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Classes="label" Text="--hf-config-path" />
+                                <TextBox Classes="mono" Text="{Binding HfConfigPath}" PlaceholderText="auto" />
+                                <TextBlock Classes="help" Text="{l:Tr Launch_HfConfig_Help}" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="--api-key" />
+                            <TextBox Classes="mono" Text="{Binding ApiKey}" PlaceholderText="{l:Tr Launch_ApiKey_Placeholder}" />
+                            <TextBlock Classes="help" Text="{l:Tr Launch_ApiKey_Help}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Launch_Extra}" />
+                            <TextBox Classes="mono" Text="{Binding ExtraArgs}" PlaceholderText="--max-num-batched-tokens 8192" />
+                            <TextBlock Classes="help" Text="{l:Tr Launch_Extra_Help}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Commande -->
+                <Border Classes="card" IsVisible="{Binding HasModels}">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="icon accent" Text="{StaticResource IconTerminal}" />
+                                <TextBlock Classes="h2" Text="{l:Tr Launch_Command}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="flat" Command="{Binding CopyCommandCommand}" ToolTip.Tip="{l:Tr Common_Copy}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                            </Button>
+                        </Grid>
+                        <Border Classes="console">
+                            <SelectableTextBlock Text="{Binding CommandPreview}" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Lancer -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" IsVisible="{Binding HasModels}">
+                    <Button Classes="accent" Padding="22,11" FontSize="15" Command="{Binding LaunchCommand}" IsEnabled="{Binding CanLaunch}">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon fill" Text="{StaticResource IconPlay}" />
+                            <TextBlock FontWeight="Bold" Text="{l:Tr Launch_Start}" />
+                        </StackPanel>
+                    </Button>
+                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding LaunchError}" />
+                        <Button IsVisible="{Binding LaunchErrorIsEnv}" Command="{Binding GoToSetupCommand}" Content="{l:Tr Err_Action_Setup}" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Command="{Binding ResetProfileCommand}" IsVisible="{Binding HasProfile}" ToolTip.Tip="{l:Tr Launch_Reset_Tip}">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon" Text="{StaticResource IconBroom}" />
+                            <TextBlock Text="{l:Tr Launch_Reset}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,260,Auto,*" ColumnSpacing="8" IsVisible="{Binding HasModels}">
+                    <TextBlock Classes="icon fill warn" Text="{StaticResource IconStar}" />
+                    <TextBox Grid.Column="1" Text="{Binding FavoriteName}" PlaceholderText="{l:Tr Fav_NamePlaceholder}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SaveFavoriteCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button Grid.Column="2" Command="{Binding SaveFavoriteCommand}" Content="{l:Tr Fav_Save}" />
+                    <TextBlock Grid.Column="3" Classes="muted small" VerticalAlignment="Center" Text="{Binding FavoriteStatus}" />
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ======================================== Détail d'un serveur -->
+        <Grid Grid.Column="1" IsVisible="{Binding !IsNewServerView}">
+            <Grid DataContext="{Binding SelectedInstance}" x:DataType="vm:InstanceViewModel"
+                  IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}"
+                  RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="24,28,28,16" RowSpacing="12">
+
+                <!-- En-tête -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <TextBlock Classes="icon fill" FontSize="32"
+                               Classes.ok="{Binding IsReady}" Classes.warn="{Binding IsStarting}"
+                               Classes.error="{Binding StateClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                               Text="{Binding StateIcon}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Classes="h1" Text="{Binding ServedName}" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Classes="muted" Text="{Binding StatusText}" />
+                            <TextBlock Classes="muted" Text="·" />
+                            <TextBlock Classes="muted" Text="{Binding UptimeText}" IsVisible="{Binding IsRunning}" />
+                            <TextBlock Classes="muted" Text="{Binding HistoryText}" IsVisible="{Binding !IsRunning}" />
+                            <TextBlock Classes="muted mono" Text="{Binding Pid, StringFormat=PID {0}}"
+                                       IsVisible="{Binding Pid, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button IsVisible="{Binding IsReady}"
+                                Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).TestInChatCommand}" CommandParameter="{Binding}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconChat}" />
+                                <TextBlock Text="{l:Tr Launch_Test}" />
+                            </StackPanel>
+                        </Button>
+                        <Button IsVisible="{Binding IsReady}" ToolTip.Tip="{l:Tr Launch_Docs}"
+                                Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).OpenDocsCommand}" CommandParameter="{Binding}">
+                            <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                        </Button>
+                        <Button IsVisible="{Binding CanSleep}" Command="{Binding SleepCommand}" ToolTip.Tip="{l:Tr Inst_Sleep_Tip}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconMoon}" />
+                                <TextBlock Text="{l:Tr Inst_Sleep}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="accent" IsVisible="{Binding CanWake}" Command="{Binding WakeUpCommand}" ToolTip.Tip="{l:Tr Inst_Wake_Tip}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconSun}" />
+                                <TextBlock Text="{l:Tr Inst_Wake}" />
+                            </StackPanel>
+                        </Button>
+                        <ProgressBar IsIndeterminate="True" Width="60" VerticalAlignment="Center" IsVisible="{Binding SleepBusy}" />
+                        <Button Classes="danger" IsVisible="{Binding IsRunning}" Command="{Binding StopCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                                <TextBlock Text="{l:Tr Launch_Stop}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="accent" IsVisible="{Binding CanRestart}" Command="{Binding RestartCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                                <TextBlock Text="{l:Tr Launch_Restart}" />
+                            </StackPanel>
+                        </Button>
+                        <Button IsVisible="{Binding CanRestart}" Command="{Binding RemoveCommand}" ToolTip.Tip="{l:Tr Launch_Remove}">
+                            <TextBlock Classes="icon" Text="{StaticResource IconTrash}" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Démarrage / erreur -->
+                <StackPanel Grid.Row="1" Spacing="10">
+                    <Border Classes="card" IsVisible="{Binding IsStarting}" BorderBrush="{DynamicResource Accent}">
+                        <StackPanel Spacing="8">
+                            <ProgressBar Value="{Binding Progress.Percent}" IsIndeterminate="{Binding Progress.IsIndeterminate}"
+                                         ShowProgressText="True" Height="18" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="muted small" Text="{Binding Progress.Detail}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding Progress.EtaText}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <!-- Échec expliqué en clair -->
+                    <Border Classes="card" BorderBrush="{DynamicResource ErrorBrush}" IsVisible="{Binding HasExplainedError}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <TextBlock Classes="icon big error" VerticalAlignment="Top" Text="{StaticResource IconWarning}" />
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Classes="h3" TextWrapping="Wrap" Text="{Binding ErrorTitle}" />
+                                <TextBlock Classes="small" TextWrapping="Wrap" Text="{Binding ErrorHint}" />
+                                <Button Classes="flat" Padding="0,2" Command="{Binding ToggleRawErrorCommand}">
+                                    <TextBlock Classes="muted small" Text="{l:Tr Err_ShowDetails}" TextDecorations="Underline" />
+                                </Button>
+                                <SelectableTextBlock Classes="error small" TextWrapping="Wrap" Text="{Binding LastError}" IsVisible="{Binding ShowRawError}" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Classes="accent" VerticalAlignment="Top" IsVisible="{Binding HasErrorAction}"
+                                    Command="{Binding RunErrorActionCommand}" Content="{Binding ErrorActionText}" />
+                        </Grid>
+                    </Border>
+                    <!-- Erreur brute (non reconnue) -->
+                    <Border Classes="card" BorderBrush="{DynamicResource ErrorBrush}">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!HasExplainedError" />
+                                <Binding Path="LastError" Converter="{x:Static StringConverters.IsNotNullOrEmpty}" />
+                            </MultiBinding>
+                        </Border.IsVisible>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <TextBlock Classes="icon error" VerticalAlignment="Top" Text="{StaticResource IconWarning}" />
+                            <SelectableTextBlock Grid.Column="1" Classes="error small" TextWrapping="Wrap" Text="{Binding LastError}" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Accès -->
+                <Border Grid.Row="2" Classes="card" Padding="12">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10">
+                            <TextBlock Classes="icon accent" Text="{StaticResource IconLink}" />
+                            <SelectableTextBlock Grid.Column="1" Classes="mono" FontSize="13" VerticalAlignment="Center" Text="{Binding ApiUrl}" />
+                            <Button Grid.Column="2" Classes="flat" ToolTip.Tip="{l:Tr Common_CopyUrl}"
+                                    Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).CopyUrlCommand}" CommandParameter="{Binding}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                            </Button>
+                            <TextBlock Grid.Column="3" Classes="muted small" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       Text="{Binding ModelRepo}" HorizontalAlignment="Right" />
+                        </Grid>
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding RouterHint}" IsVisible="{Binding RouterHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Métriques -->
+                <Grid Grid.Row="3" ColumnDefinitions="*,*,*,*,2*" ColumnSpacing="10">
+                    <Border Classes="metric">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Inst_Running}" />
+                            <TextBlock Classes="value" FontSize="22" Text="{Binding RequestsRunning, StringFormat={}{0:0}}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Classes="metric">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Inst_Waiting}" />
+                            <TextBlock Classes="value" FontSize="22" Text="{Binding RequestsWaiting, StringFormat={}{0:0}}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Classes="metric">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Inst_KvCache}" />
+                            <TextBlock Classes="value" FontSize="22" Text="{Binding KvCachePercent, StringFormat={}{0:0.0} %}" />
+                            <ProgressBar Classes="thin" Value="{Binding KvCachePercent}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="3" Classes="metric">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Inst_PromptTps}" />
+                            <TextBlock Classes="value" FontSize="22" Text="{Binding PromptTps, StringFormat={}{0:0}}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="4" Classes="metric">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="{l:Tr Inst_GenTps}" />
+                                <TextBlock Classes="value" FontSize="22" Text="{Binding GenerationTps, StringFormat={}{0:0.0}}" />
+                                <TextBlock Classes="muted small" Text="{Binding TotalGenerated, StringFormat=Σ {0:N0}}" />
+                            </StackPanel>
+                            <c:Sparkline Grid.Column="1" Height="54" Maximum="0" Data="{Binding GenerationHistory}" Stroke="{DynamicResource ChartGpu}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Console / Configuration -->
+                <Border Grid.Row="4" Classes="card" Padding="10,4,10,10">
+                    <TabControl SelectedIndex="{Binding SelectedTab}">
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconTerminal}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding ConsoleTitle}" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="1" Classes="muted small mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding LogPath}" />
+                                    <CheckBox Grid.Column="2" IsChecked="{Binding AutoScroll}" Content="{l:Tr Inst_Follow}" />
+                                    <Button Grid.Column="3" Classes="flat" ToolTip.Tip="{l:Tr Common_Copy}"
+                                            Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).CopyLogsCommand}" CommandParameter="{Binding}">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                    </Button>
+                                    <Button Grid.Column="4" Classes="flat" ToolTip.Tip="{l:Tr Inst_OpenLog}" Command="{Binding OpenLogFileCommand}">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                                    </Button>
+                                    <Button Grid.Column="5" Classes="flat" ToolTip.Tip="{l:Tr Inst_Clear}" Command="{Binding ClearLogsCommand}">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconBroom}" />
+                                    </Button>
+                                </Grid>
+                                <Border Grid.Row="1" Classes="console" Padding="4">
+                                    <ListBox Classes="console" ItemsSource="{Binding Logs}" Background="Transparent"
+                                             c:AutoScroll.IsEnabled="{Binding AutoScroll}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <c:AnsiText Line="{Binding}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                                <!-- Saisie (entrée standard du processus) -->
+                                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding CanSendInput}">
+                                    <TextBox Classes="mono" Text="{Binding StdinText}" PlaceholderText="{Binding StdinHint}">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding SendInputCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                    <Button Grid.Column="1" Command="{Binding SendInputCommand}" ToolTip.Tip="{l:Tr Inst_Send}">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconSend}" />
+                                    </Button>
+                                    <Button Grid.Column="2" Command="{Binding SendInterruptCommand}" ToolTip.Tip="{Binding InterruptHint}">
+                                        <TextBlock Classes="mono" FontWeight="Bold" Text="Ctrl+C" />
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+                        <TabItem IsVisible="{Binding Bench.IsAvailable}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconChart}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{l:Tr Bench_Title}" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid DataContext="{Binding Bench}" x:DataType="vm:BenchmarkViewModel" RowDefinitions="Auto,Auto,*" RowSpacing="10" Margin="0,6,0,0">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Bench_Help}" />
+                                    <WrapPanel ItemSpacing="14" LineSpacing="8">
+                                        <StackPanel>
+                                            <TextBlock Classes="label" Text="{l:Tr Bench_Input}" />
+                                            <TextBox Width="110" Text="{Binding InputLen}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Classes="label" Text="{l:Tr Bench_Output}" />
+                                            <TextBox Width="110" Text="{Binding OutputLen}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Classes="label" Text="{l:Tr Bench_Prompts}" />
+                                            <TextBox Width="110" Text="{Binding NumPrompts}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Classes="label" Text="{l:Tr Bench_Concurrency}" />
+                                            <TextBox Width="110" Text="{Binding Concurrency}" />
+                                        </StackPanel>
+                                        <Button Classes="accent" VerticalAlignment="Bottom" Command="{Binding RunCommand}" IsVisible="{Binding !IsRunning}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon fill" Text="{StaticResource IconPlay}" />
+                                                <TextBlock Text="{l:Tr Bench_Run}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="danger" VerticalAlignment="Bottom" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                                                <TextBlock Text="{l:Tr Common_Cancel}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Spacing="4">
+                                    <ProgressBar Value="{Binding Percent}" IsVisible="{Binding IsRunning}" />
+                                    <TextBlock Classes="small" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Status}" />
+                                </StackPanel>
+                                <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding History}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:BenchRun">
+                                                    <Border Classes="inset" Margin="0,0,0,8">
+                                                        <StackPanel Spacing="4">
+                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                <StackPanel>
+                                                                    <TextBlock FontWeight="Bold" Text="{Binding Throughput}" />
+                                                                    <TextBlock Classes="small" Text="{Binding Latency}" />
+                                                                    <TextBlock Classes="muted small" Text="{Binding Settings}" />
+                                                                    <TextBlock Classes="muted small" Text="{Binding At, StringFormat={}{0:g}}" />
+                                                                </StackPanel>
+                                                                <Button Grid.Column="1" Classes="flat" VerticalAlignment="Top" ToolTip.Tip="{l:Tr Common_Delete}"
+                                                                        Command="{Binding $parent[ItemsControl].((vm:BenchmarkViewModel)DataContext).DeleteRunCommand}" CommandParameter="{Binding}">
+                                                                    <TextBlock Classes="icon error" Text="{StaticResource IconTrash}" />
+                                                                </Button>
+                                                            </Grid>
+                                                            <ItemsControl ItemsSource="{Binding Rows}">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate x:DataType="l:ConfigRow">
+                                                                        <Grid ColumnDefinitions="200,*">
+                                                                            <TextBlock Classes="muted small" Text="{Binding Label}" />
+                                                                            <TextBlock Grid.Column="1" Classes="small" Text="{Binding Value}" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                    <Border Grid.Column="1" Classes="console" Padding="4">
+                                        <ListBox Classes="console" ItemsSource="{Binding Log}" Background="Transparent" c:AutoScroll.IsEnabled="True">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <TextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{l:Tr Cfg_Title}" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <ScrollViewer>
+                                <StackPanel Spacing="12" Margin="0,4,0,0">
+                                    <ItemsControl ItemsSource="{Binding ConfigRows}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="l:ConfigRow">
+                                                <Grid ColumnDefinitions="240,*" Margin="0,3">
+                                                    <TextBlock Classes="muted mono" Text="{Binding Label}" />
+                                                    <SelectableTextBlock Grid.Column="1" FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Value}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Border Classes="console">
+                                            <SelectableTextBlock Text="{Binding CommandLine}" />
+                                        </Border>
+                                        <Button Grid.Column="1" Classes="flat" VerticalAlignment="Top" ToolTip.Tip="{l:Tr Common_Copy}"
+                                                Command="{Binding $parent[UserControl].((vm:LaunchViewModel)DataContext).CopyInstanceCommandCommand}" CommandParameter="{Binding}">
+                                            <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                        </Button>
+                                    </Grid>
+                                    <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                        <Button Command="{Binding EditConfigCommand}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                                                <TextBlock Text="{l:Tr Cfg_Edit}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <TextBox Width="240" Text="{Binding FavoriteName}" PlaceholderText="{l:Tr Fav_NamePlaceholder}">
+                                            <TextBox.KeyBindings>
+                                                <KeyBinding Gesture="Enter" Command="{Binding AddFavoriteCommand}" />
+                                            </TextBox.KeyBindings>
+                                        </TextBox>
+                                        <Button Command="{Binding AddFavoriteCommand}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon fill warn" Text="{StaticResource IconStar}" />
+                                                <TextBlock Text="{l:Tr Fav_Save}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding FavoriteStatus}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>AlpenMux</RootNamespace>
+        <AssemblyName>alpenmux</AssemblyName>
+
+        <Nullable>enable</Nullable>
+        <!-- Commentaires XML : tout membre public non documenté donne un avertissement CS1591 -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <InvariantGlobalization>false</InvariantGlobalization>
+        <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+        <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <NoWarn>$(NoWarn);CA1416</NoWarn>
+
+        <!-- Les traductions utilisent des liaisons par réflexion : pas de trimming -->
+        <PublishTrimmed>false</PublishTrimmed>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+        <Version>1.0.0</Version>
+        <!-- Icône de l'exécutable Windows (Explorateur, barre des tâches) -->
+        <ApplicationIcon>Assets\alpenmux.ico</ApplicationIcon>
+        <Title>AlpenMux</Title>
+        <Authors>Lukas Hofer</Authors>
+        <Description>Installer vLLM, télécharger des modèles et piloter plusieurs serveurs d'IA locaux derrière une seule adresse</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+        <AvaloniaResource Include="Assets\Lang\*.json" />
+        <AvaloniaResource Include="Assets\Scripts\*.py" />
+        <AvaloniaResource Include="Assets\Scripts\*.js" />
+        <AvaloniaResource Include="Assets\icon.png" />
+        <AvaloniaResource Include="Assets\icon-64.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="Markdown.Avalonia.Tight" Version="12.0.2" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.7" />
+        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
+        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
+        <PackageReference Include="System.Numerics.Tensors" Version="10.0.14" />
+    </ItemGroup>
+</Project>

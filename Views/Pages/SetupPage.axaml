@@ -1,0 +1,170 @@
+<!--
+    Fichier      :  SetupPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Installation des dépendances : état de chaque élément, installation en un clic,
+                    progression (% + temps restant) et journal des commandes.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             x:Class="AlpenMux.Views.Pages.SetupPage"
+             x:DataType="vm:SetupViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <!-- En-tête -->
+        <Grid Grid.Row="0" Margin="28,28,28,12" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="h1" Text="{l:Tr Setup_Title}" />
+                <TextBlock Classes="muted" Text="{Binding Summary}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                        <TextBlock Text="{l:Tr Common_Refresh}" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="accent" Command="{Binding InstallAllCommand}" IsEnabled="{Binding !IsBusy}"
+                        IsVisible="{Binding !AllRequiredOk}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconDownload}" />
+                        <TextBlock Text="{l:Tr Setup_InstallAll}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="28,0,28,28" Spacing="12">
+
+                <!-- Progression -->
+                <Border Classes="card" IsVisible="{Binding Progress.IsActive}" BorderBrush="{DynamicResource Accent}">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="h3" Text="{Binding Progress.Title}" />
+                            <Button Grid.Column="1" Classes="danger" Command="{Binding CancelCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconClose}" />
+                                    <TextBlock Text="{l:Tr Common_Cancel}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <ProgressBar Value="{Binding Progress.Percent}" IsIndeterminate="{Binding Progress.IsIndeterminate}"
+                                     ShowProgressText="True" Height="18" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+                            <TextBlock Classes="muted small" Text="{Binding Progress.Detail}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Progress.SpeedText}" />
+                            <TextBlock Grid.Column="2" Classes="small" FontWeight="Bold" Text="{Binding Progress.EtaText}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Dépendances -->
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DependencyItem">
+                            <Border Classes="card" Margin="0,0,0,10">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                                    <Border Classes="inset" Width="46" Height="46" Padding="0" VerticalAlignment="Top">
+                                        <TextBlock Classes="icon big" HorizontalAlignment="Center" Text="{Binding Icon}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Classes="h3" Text="{Binding Title}" VerticalAlignment="Center" />
+                                            <TextBlock Classes="icon fill" FontSize="16"
+                                                       Classes.ok="{Binding IsOk}"
+                                                       Classes.error="{Binding State, Converter={x:Static l:Converters.IsMissing}}"
+                                                       Classes.warn="{Binding State, Converter={x:Static l:Converters.IsWarning}}"
+                                                       Text="{Binding StateIcon}" />
+                                        </StackPanel>
+                                        <TextBlock Classes="muted small" Text="{Binding Description}" TextWrapping="Wrap" />
+                                        <SelectableTextBlock Classes="small mono" Text="{Binding Detail}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button IsVisible="{Binding HasSecondaryAction}" Command="{Binding RunSecondaryCommand}"
+                                                IsEnabled="{Binding !$parent[UserControl].((vm:SetupViewModel)DataContext).IsBusy}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon" Text="{Binding SecondaryIcon}" />
+                                                <TextBlock Text="{Binding SecondaryActionText}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="accent" IsVisible="{Binding HasAction}" Command="{Binding RunCommand}"
+                                                IsEnabled="{Binding !$parent[UserControl].((vm:SetupViewModel)DataContext).IsBusy}">
+                                            <StackPanel Classes="btn">
+                                                <TextBlock Classes="icon" Text="{Binding ActionIcon}" />
+                                                <TextBlock Text="{Binding ActionText}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Chemin du venv -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Setup_VenvLocation}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Setup_VenvLocation_Desc}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBox Classes="mono" Text="{Binding VenvPath}" />
+                            <Button Grid.Column="1" Command="{Binding ApplyVenvCommand}" IsEnabled="{Binding !IsBusy}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                                    <TextBlock Text="{l:Tr Common_Apply}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Commande manuelle -->
+                <Border Classes="card" IsVisible="{Binding ManualCommand, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Setup_Manual}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Setup_Manual_Desc}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Border Classes="console">
+                                <SelectableTextBlock Text="{Binding ManualCommand}" />
+                            </Border>
+                            <Button Grid.Column="1" Command="{Binding CopyManualCommandCommand}" VerticalAlignment="Center">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                    <TextBlock Text="{l:Tr Common_Copy}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Journal -->
+                <Expander IsExpanded="{Binding ShowLogs}" HorizontalAlignment="Stretch">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="icon" Text="{StaticResource IconTerminal}" />
+                            <TextBlock Text="{l:Tr Setup_Logs}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Expander.Header>
+                    <Grid RowDefinitions="Auto,*" RowSpacing="6">
+                        <Button Classes="flat" HorizontalAlignment="Right" Command="{Binding CopyLogsCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                <TextBlock Text="{l:Tr Common_Copy}" />
+                            </StackPanel>
+                        </Button>
+                        <Border Grid.Row="1" Classes="console" Height="300">
+                            <ListBox x:Name="LogList" ItemsSource="{Binding Logs}" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <SelectableTextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

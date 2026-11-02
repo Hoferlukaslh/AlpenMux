@@ -1,0 +1,248 @@
+<!--
+    Fichier      :  ImagesPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Page Images : génération d'images avec un modèle de diffusion lancé (vLLM-Omni, stable-diffusion.cpp).
+                    Galerie des images de la session ; un clic ouvre le carrousel (images précédente et suivante, informations
+                    de la génération en bas). Prompt en bas de la galerie, réglages (taille, étapes, guidance, prompt négatif) à droite.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.ImagesPage"
+             x:DataType="vm:ImagesViewModel">
+    <Grid ColumnDefinitions="*,280" Margin="28,28,28,16" ColumnSpacing="16">
+        <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="10">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="h1" Text="{l:Tr Images_Title}" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" Text="{l:Tr Images_Subtitle}" />
+            </StackPanel>
+
+            <!-- Galerie : miniatures des images de la session, un clic ouvre le carrousel -->
+            <Border Grid.Row="1" Classes="card" Padding="12">
+                <Panel>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8"
+                                IsVisible="{Binding ShowEmptyHint}">
+                        <TextBlock Classes="icon muted" FontSize="44" HorizontalAlignment="Center" Text="{StaticResource IconImage}" />
+                        <TextBlock Classes="muted" HorizontalAlignment="Center" Text="{l:Tr Images_Empty}" />
+                    </StackPanel>
+                    <ScrollViewer>
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding Gallery}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GeneratedImage">
+                                        <Panel Width="180" Height="180" Margin="0,0,10,10">
+                                            <Button Classes="flat" Padding="0"
+                                                    Command="{Binding $parent[UserControl].((vm:ImagesViewModel)DataContext).OpenImageCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Border CornerRadius="10" ClipToBounds="True" Width="180" Height="180">
+                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                                </Border>
+                                            </Button>
+                                            <!-- Maj/Ctrl maintenu : corbeille, suppression immédiate (au-dessus de la vignette) -->
+                                            <Button Classes="flat" Padding="8,6" Margin="6" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                    Background="{DynamicResource Surface}" ToolTip.Tip="{l:Tr Ui_QuickDelete}"
+                                                    IsVisible="{Binding $parent[UserControl].((vm:ImagesViewModel)DataContext).QuickDeleteArmed}"
+                                                    Command="{Binding $parent[UserControl].((vm:ImagesViewModel)DataContext).DeleteNowCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Classes="icon error" FontSize="18" Text="{StaticResource IconTrash}" />
+                                            </Button>
+                                        </Panel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- Image en cours : une case en attente après les images de la session -->
+                            <Border IsVisible="{Binding IsGenerating}" Width="180" Height="180" CornerRadius="10" HorizontalAlignment="Left"
+                                    Background="{DynamicResource SurfaceAlt}">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" Margin="10">
+                                    <TextBlock Classes="icon muted" FontSize="30" HorizontalAlignment="Center" Text="{StaticResource IconImage}" />
+                                    <TextBlock Classes="muted small" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                                               Text="{l:Tr Chat_ImageGenerating}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
+
+            <StackPanel Grid.Row="2" Spacing="6">
+                <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Error}"
+                           IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <!-- Confirmation de l'effacement de toute la galerie -->
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" IsVisible="{Binding IsConfirmingClear}">
+                    <TextBlock Classes="warn" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Images_ClearConfirm}" />
+                    <Button Grid.Column="1" Classes="danger" Padding="8,2" Command="{Binding ConfirmClearCommand}">
+                        <TextBlock Classes="small" Text="{l:Tr Common_Yes}" />
+                    </Button>
+                    <Button Grid.Column="2" Classes="flat" Padding="8,2" Command="{Binding CancelClearCommand}">
+                        <TextBlock Classes="small" Text="{l:Tr Common_No}" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBox Text="{Binding Input}" AcceptsReturn="False" PlaceholderText="{Binding InputPlaceholder}" MinHeight="40" VerticalContentAlignment="Center">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding SendCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <Button Grid.Column="1" Classes="accent" Command="{Binding SendCommand}" IsVisible="{Binding !IsGenerating}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconSend}" />
+                        <TextBlock Text="{l:Tr Images_Generate}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Classes="danger" Command="{Binding StopGenerationCommand}" IsVisible="{Binding IsGenerating}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                        <TextBlock Text="{l:Tr Launch_Stop}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Command="{Binding BeginClearCommand}" ToolTip.Tip="{l:Tr Images_Clear}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconBroom}" />
+                </Button>
+            </Grid>
+        </Grid>
+
+        <!-- Réglages -->
+        <Border Grid.Column="1" Classes="card" VerticalAlignment="Top">
+            <StackPanel Spacing="12">
+                <TextBlock Classes="h3" Text="{l:Tr Chat_Settings}" />
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_Server}" />
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding ImageTargets}" SelectedItem="{Binding Target}"
+                              PlaceholderText="{l:Tr Chat_NoServerShort}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InstanceViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon fill" FontSize="13" Classes.ok="{Binding IsReady}" Text="{Binding StateIcon}" />
+                                    <TextBlock Text="{Binding Title}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Images_NoServer}"
+                               IsVisible="{Binding !HasTarget}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_ImageSize}" />
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding ImageSizes}" SelectedItem="{Binding ImageSize}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_ImageSteps}" />
+                    <TextBox Text="{Binding ImageSteps}" PlaceholderText="auto" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_ImageGuidance}" />
+                    <TextBox Text="{Binding ImageGuidance}" PlaceholderText="auto" />
+                    <TextBlock Classes="help" Text="{l:Tr Chat_ImageGuidance_Help}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_ImageNegative}" />
+                    <TextBox Text="{Binding ImageNegative}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60"
+                             PlaceholderText="{l:Tr Chat_ImageNegative_Placeholder}" />
+                </StackPanel>
+                <Button Command="{Binding OpenImagesFolderCommand}">
+                    <StackPanel Classes="btn">
+                        <TextBlock Classes="icon" Text="{StaticResource IconFolderOpen}" />
+                        <TextBlock Text="{l:Tr Chat_ImagesFolder}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Carrousel : par-dessus la page. Gauche / droite : image précédente / suivante ; Échap : fermer (voir ImagesPage.axaml.cs) -->
+        <Border Grid.ColumnSpan="2" IsVisible="{Binding IsViewerOpen}" Background="{DynamicResource AppBackground}">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                <!-- Position dans la galerie (la fermeture est dans la barre de la visionneuse) -->
+                <TextBlock Grid.Row="0" Classes="muted" Text="{Binding ViewedPosition}" />
+
+                <!-- Image, avec les boutons précédente et suivante de part et d'autre -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Button Classes="flat" Padding="10,16" VerticalAlignment="Center" Command="{Binding PreviousCommand}" ToolTip.Tip="{l:Tr Images_Viewer_Previous}">
+                        <TextBlock Classes="icon" FontSize="24" Text="{StaticResource IconCaretLeft}" />
+                    </Button>
+                    <c:ImagePreview Grid.Column="1" Picture="{Binding Viewed.Full}" SuggestedName="{Binding Viewed.FileName}"
+                                    CloseCommand="{Binding CloseViewerCommand}" />
+                    <Button Grid.Column="2" Classes="flat" Padding="10,16" VerticalAlignment="Center" Command="{Binding NextCommand}" ToolTip.Tip="{l:Tr Images_Viewer_Next}">
+                        <TextBlock Classes="icon" FontSize="24" Text="{StaticResource IconCaretRight}" />
+                    </Button>
+                </Grid>
+
+                <!-- Informations de la génération -->
+                <Border Grid.Row="2" Classes="card" Padding="16">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="label" Text="{l:Tr Images_Info_Prompt}" />
+                            <ScrollViewer MaxHeight="110">
+                                <SelectableTextBlock TextWrapping="Wrap" Text="{Binding Viewed.Prompt}" />
+                            </ScrollViewer>
+                            <StackPanel Spacing="4" IsVisible="{Binding Viewed.HasNegativePrompt}">
+                                <TextBlock Classes="label" Text="{l:Tr Images_Info_Negative}" />
+                                <SelectableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Viewed.NegativePrompt}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Command="{Binding CopyPromptCommand}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                                        <TextBlock Text="{l:Tr Images_Viewer_CopyPrompt}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding OpenViewedFileCommand}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconImage}" />
+                                        <TextBlock Text="{l:Tr Images_Viewer_OpenFile}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <!-- Suppression de l'image : bouton, puis confirmation -->
+                            <Button Classes="danger" Command="{Binding BeginDeleteViewedCommand}" IsVisible="{Binding !IsConfirmingDelete}" HorizontalAlignment="Left">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconTrash}" />
+                                    <TextBlock Text="{l:Tr Images_Delete}" />
+                                </StackPanel>
+                            </Button>
+                            <StackPanel Spacing="6" IsVisible="{Binding IsConfirmingDelete}">
+                                <TextBlock Classes="small warn" TextWrapping="Wrap" Text="{l:Tr Images_DeleteConfirm}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="danger" Padding="8,2" Command="{Binding ConfirmDeleteViewedCommand}">
+                                        <TextBlock Classes="small" Text="{l:Tr Common_Yes}" />
+                                    </Button>
+                                    <Button Classes="flat" Padding="8,2" Command="{Binding CancelDeleteCommand}">
+                                        <TextBlock Classes="small" Text="{l:Tr Common_No}" />
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="14" RowSpacing="5"
+                              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Classes="muted small" Text="{l:Tr Images_Info_Size}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Viewed.Size}" />
+                            <TextBlock Grid.Row="1" Classes="muted small" Text="{l:Tr Images_Info_Steps}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Viewed.Steps}" />
+                            <TextBlock Grid.Row="2" Classes="muted small" Text="{l:Tr Images_Info_Guidance}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Viewed.Guidance}" />
+                            <TextBlock Grid.Row="3" Classes="muted small" Text="{l:Tr Images_Info_Model}" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Viewed.Model}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="4" Classes="muted small" Text="{l:Tr Images_Info_Server}" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Viewed.Server}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="5" Classes="muted small" Text="{l:Tr Images_Info_Duration}" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Viewed.DurationText}" />
+                            <TextBlock Grid.Row="6" Classes="muted small" Text="{l:Tr Images_Info_Created}" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Viewed.CreatedText}" />
+                            <TextBlock Grid.Row="7" Classes="muted small" Text="{l:Tr Images_Info_File}" />
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Viewed.FileName}" TextWrapping="Wrap" />
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

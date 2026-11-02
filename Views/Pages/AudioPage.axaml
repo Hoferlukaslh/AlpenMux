@@ -1,0 +1,167 @@
+<!--
+    Fichier      :  AudioPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Page Audio : synthèse vocale avec un modèle TTS lancé (vLLM-Omni). Texte à dire, audios générés
+                    conservés (écouter, télécharger, supprimer) ; voix, langue et consignes de style à droite.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             x:Class="AlpenMux.Views.Pages.AudioPage"
+             x:DataType="vm:AudioViewModel">
+    <Grid ColumnDefinitions="*,280" Margin="28,28,28,16" ColumnSpacing="16">
+        <Grid RowDefinitions="Auto,*" RowSpacing="12">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="h1" Text="{l:Tr Audio_Title}" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" Text="{l:Tr Tts_Subtitle}" />
+            </StackPanel>
+
+            <Grid Grid.Row="1" RowDefinitions="Auto,*" RowSpacing="12">
+                <!-- Texte à dire -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Tts_TextTitle}" />
+                        <TextBox Text="{Binding Tts.Text}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="110" MaxHeight="240"
+                                 PlaceholderText="{l:Tr Tts_TextPlaceholder}">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Ctrl+Enter" Command="{Binding Tts.GenerateCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Tts.CharCount}" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <ProgressBar IsIndeterminate="True" Width="120" VerticalAlignment="Center" IsVisible="{Binding Tts.IsGenerating}" />
+                                <Button Classes="accent" Command="{Binding Tts.GenerateCommand}" IsEnabled="{Binding Tts.CanGenerate}"
+                                        IsVisible="{Binding !Tts.IsGenerating}" ToolTip.Tip="Ctrl+Entrée">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconWaveform}" />
+                                        <TextBlock Text="{l:Tr Tts_Generate}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="danger" Command="{Binding Tts.CancelCommand}" IsVisible="{Binding Tts.IsGenerating}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                                        <TextBlock Text="{l:Tr Common_Cancel}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Tts.Error}"
+                                   IsVisible="{Binding Tts.Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Audios générés -->
+                <Border Grid.Row="1" Classes="card" Padding="12">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="h3" VerticalAlignment="Center" Text="{l:Tr Tts_History}" />
+                            <Button Grid.Column="1" Classes="flat" Command="{Binding Tts.OpenFolderCommand}" ToolTip.Tip="{l:Tr Tts_OpenFolder}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconFolderOpen}" />
+                            </Button>
+                        </Grid>
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" IsVisible="{Binding !Tts.HasClips}">
+                            <TextBlock Classes="icon muted" FontSize="44" HorizontalAlignment="Center" Text="{StaticResource IconWaveform}" />
+                            <TextBlock Classes="muted" HorizontalAlignment="Center" Text="{l:Tr Tts_Empty}" />
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding Tts.HasClips}">
+                            <ItemsControl ItemsSource="{Binding Tts.Clips}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TtsClipViewModel">
+                                        <Border Background="{DynamicResource SurfaceAlt}" CornerRadius="10" Padding="10,8" Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                <Button Classes="accent" Width="38" Height="38" Padding="0" VerticalAlignment="Top"
+                                                        Command="{Binding PlayCommand}" ToolTip.Tip="{l:Tr Tts_Play}">
+                                                    <TextBlock Classes="icon fill" HorizontalAlignment="Center" Text="{Binding PlayIcon}" />
+                                                </Button>
+                                                <StackPanel Grid.Column="1" Spacing="3">
+                                                    <SelectableTextBlock TextWrapping="Wrap" MaxLines="{Binding TextMaxLines}" Text="{Binding Text}" />
+                                                    <Button Classes="flat" Padding="0" HorizontalAlignment="Left" IsVisible="{Binding IsLongText}"
+                                                            Command="{Binding ToggleExpandedCommand}">
+                                                        <TextBlock Classes="small accent" Text="{Binding ExpandText}" />
+                                                    </Button>
+                                                    <TextBlock Classes="muted small" FontStyle="Italic" TextWrapping="Wrap"
+                                                               IsVisible="{Binding HasInstructions}" Text="{Binding Instructions}" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <TextBlock Classes="icon accent small" VerticalAlignment="Center" Text="{StaticResource IconSpeaker}" />
+                                                            <TextBlock Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Voice}" />
+                                                        </StackPanel>
+                                                        <TextBlock Classes="muted small" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Model}" />
+                                                    </StackPanel>
+                                                    <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding Details}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                                    <Button Classes="flat" Command="{Binding DownloadCommand}" ToolTip.Tip="{l:Tr Tts_Download}">
+                                                        <TextBlock Classes="icon" Text="{StaticResource IconDownload}" />
+                                                    </Button>
+                                                    <Button Classes="flat" Command="{Binding DeleteCommand}" ToolTip.Tip="{l:Tr Common_Delete}">
+                                                        <TextBlock Classes="icon error" Text="{StaticResource IconTrash}" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Réglages -->
+        <Border Grid.Column="1" Classes="card" VerticalAlignment="Top">
+            <StackPanel Spacing="12">
+                <TextBlock Classes="h3" Text="{l:Tr Chat_Settings}" />
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_Server}" />
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding TtsTargets}" SelectedItem="{Binding Target}"
+                              PlaceholderText="{l:Tr Chat_NoServerShort}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InstanceViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon fill" FontSize="13" Classes.ok="{Binding IsReady}" Text="{Binding StateIcon}" />
+                                    <TextBlock Text="{Binding Title}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Audio_NoServer}"
+                               IsVisible="{Binding !HasTarget}" />
+                </StackPanel>
+                <StackPanel Spacing="12">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="{l:Tr Tts_Voice}" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Tts.Voices}" SelectedItem="{Binding Tts.SelectedVoice}" />
+                            <Button Grid.Column="1" Command="{Binding Tts.PreviewVoiceCommand}" ToolTip.Tip="{l:Tr Tts_Preview}">
+                                <Panel>
+                                    <TextBlock Classes="icon" Text="{Binding Tts.PreviewIcon}" IsVisible="{Binding !Tts.IsPreviewing}" />
+                                    <TextBlock Classes="icon" Text="{StaticResource IconHourglass}" IsVisible="{Binding Tts.IsPreviewing}" />
+                                </Panel>
+                            </Button>
+                            <Button Grid.Column="2" Classes="flat" Command="{Binding Tts.LoadVoicesCommand}" ToolTip.Tip="{l:Tr Common_Refresh}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                            </Button>
+                        </Grid>
+                        <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding Tts.VoicesInfo}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding Tts.HasLanguages}">
+                        <TextBlock Classes="label" Text="{l:Tr Tts_Language}" />
+                        <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Tts.Languages}" SelectedItem="{Binding Tts.SelectedLanguage}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="{l:Tr Tts_Instructions}" />
+                        <TextBox Text="{Binding Tts.Instructions}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"
+                                 PlaceholderText="{l:Tr Tts_Instructions_Placeholder}" />
+                        <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Tts_Instructions_Help}" />
+                    </StackPanel>
+                    <TextBlock Classes="small warn" TextWrapping="Wrap" Text="{Binding Tts.PlayerMissing}"
+                               IsVisible="{Binding Tts.PlayerMissing, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

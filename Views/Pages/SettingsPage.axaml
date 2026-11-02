@@ -1,0 +1,336 @@
+<!--
+    Fichier      :  SettingsPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Paramètres : apparence, langue, chemins, installation, serveur, moniteur.
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.SettingsPage"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <Style Selector="Border.swatch">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.swatch.selected">
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryForeground}" />
+        </Style>
+        <Style Selector="TextBlock.help">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="RadioButton.theme">
+            <Setter Property="Margin" Value="0,0,18,0" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer>
+        <StackPanel Margin="28" Spacing="14">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="h1" Text="{l:Tr Nav_Settings}" />
+                <TextBlock Classes="muted" Text="{l:Tr Settings_Saved}" />
+            </StackPanel>
+
+            <!-- Cartes rangées automatiquement selon la place libre -->
+            <c:MasonryPanel MinColumnWidth="520" ColumnSpacing="14" RowSpacing="14">
+            <!-- Apparence -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconHalf}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Appearance}" />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="{l:Tr Settings_Theme}" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Classes="theme" GroupName="theme" IsChecked="{Binding IsSystemTheme}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconHalf}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{l:Tr Settings_Theme_System}" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Classes="theme" GroupName="theme" IsChecked="{Binding IsLightTheme}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconSun}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{l:Tr Settings_Theme_Light}" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Classes="theme" GroupName="theme" IsChecked="{Binding IsDarkTheme}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconMoon}" />
+                                    <TextBlock VerticalAlignment="Center" Text="{l:Tr Settings_Theme_Dark}" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="icon muted" FontSize="15" Text="{StaticResource IconTranslate}" />
+                            <TextBlock Classes="label" Margin="0" VerticalAlignment="Center" Text="{l:Tr Settings_Language}" />
+                        </StackPanel>
+                        <ComboBox Width="260" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="l:LanguageInfo">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <TextBlock Classes="help" VerticalAlignment="Center" Text="{l:Tr Settings_Language_Help}" />
+                            <Button Grid.Column="1" Command="{Binding OpenLangDirCommand}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconFolderOpen}" />
+                                    <TextBlock Text="{l:Tr Settings_OpenLangDir}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Emplacements -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconFolder}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Paths}" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="{l:Tr Settings_Venv}" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <TextBox Classes="mono" Text="{Binding VenvPath}" />
+                            <Button Grid.Column="1" Command="{Binding ApplyVenvCommand}" ToolTip.Tip="{l:Tr Common_Apply}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                            </Button>
+                            <Button Grid.Column="2" Command="{Binding BrowseVenvCommand}" Content="{l:Tr Common_Browse}" />
+                        </Grid>
+                        <TextBlock Classes="help" Text="{l:Tr Settings_Venv_Help}" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="{l:Tr Settings_ModelsDir}" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <TextBox Classes="mono" Text="{Binding ModelsDir}" />
+                            <Button Grid.Column="1" Command="{Binding ApplyModelsDirCommand}" ToolTip.Tip="{l:Tr Common_Apply}">
+                                <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                            </Button>
+                            <Button Grid.Column="2" Command="{Binding BrowseModelsCommand}" Content="{l:Tr Common_Browse}" />
+                        </Grid>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="{l:Tr Settings_ConfigDir}" />
+                            <SelectableTextBlock Classes="mono muted" Text="{Binding ConfigDir}" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Command="{Binding OpenConfigDirCommand}">
+                            <TextBlock Classes="icon" Text="{StaticResource IconExternal}" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Installation -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconSetup}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Install}" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="140,*" ColumnSpacing="16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_Python}" />
+                            <TextBox Classes="mono" Text="{Binding PythonVersion}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_VllmSpec}" />
+                            <TextBox Classes="mono" Text="{Binding VllmSpec}" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="help" Text="{l:Tr Settings_Install_Help}" />
+                </StackPanel>
+            </Border>
+
+
+            <!-- Adresse API unique -->
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconLink}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Router}" />
+                    </StackPanel>
+                    <TextBlock Classes="help" Margin="0" Text="{l:Tr Settings_Router_Help}" />
+                    <CheckBox IsChecked="{Binding RouterEnabled}" Content="{l:Tr Settings_Router_Enable}" />
+                    <Grid ColumnDefinitions="*,110,Auto" ColumnSpacing="10" IsEnabled="{Binding RouterEnabled}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_Router_Host}" />
+                            <TextBox Classes="mono" Text="{Binding RouterHost}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_Router_Port}" />
+                            <TextBox Classes="mono" Text="{Binding RouterPort}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" VerticalAlignment="Bottom" Command="{Binding ApplyRouterCommand}" ToolTip.Tip="{l:Tr Common_Apply}">
+                            <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                        </Button>
+                    </Grid>
+                    <StackPanel Spacing="4" IsEnabled="{Binding RouterEnabled}">
+                        <TextBlock Classes="label" Text="{l:Tr Settings_Router_Key}" />
+                        <TextBox Classes="mono" Text="{Binding RouterApiKey}" PlaceholderText="{l:Tr Launch_ApiKey_Placeholder}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2" IsEnabled="{Binding RouterEnabled}">
+                        <CheckBox IsChecked="{Binding RouterAutoSleep}" Content="{l:Tr Settings_Router_AutoSleep}" />
+                        <TextBlock Classes="help" Margin="28,0,0,0" Text="{l:Tr Settings_Router_AutoSleep_Help}" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBlock Classes="small" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding RouterStatus}"
+                                   Classes.ok="{Binding RouterStatusClass, Converter={x:Static l:Converters.IsOkClass}}"
+                                   Classes.error="{Binding RouterStatusClass, Converter={x:Static l:Converters.IsErrorClass}}" />
+                        <Button Grid.Column="1" Classes="flat" Command="{Binding CopyRouterUrlCommand}" ToolTip.Tip="{l:Tr Common_CopyUrl}">
+                            <TextBlock Classes="icon" Text="{StaticResource IconCopy}" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Serveur -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconServers}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Server}" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,140" ColumnSpacing="16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_DefaultHost}" />
+                            <TextBox Classes="mono" Text="{Binding DefaultHost}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Classes="label" Text="{l:Tr Settings_DefaultPort}" />
+                            <TextBox Classes="mono" Text="{Binding DefaultPort}" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="{l:Tr Settings_ContextCap}" />
+                        <TextBox Classes="mono" Width="160" HorizontalAlignment="Left" Text="{Binding ContextCap}" PlaceholderText="{l:Tr Settings_ContextCap_None}" />
+                        <TextBlock Classes="help" Text="{l:Tr Settings_ContextCap_Help}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <CheckBox IsChecked="{Binding MinimizeToTray}" Content="{l:Tr Settings_MinimizeToTray}" />
+                        <TextBlock Classes="help" Margin="28,0,0,0" Text="{l:Tr Settings_MinimizeToTray_Help}" />
+                    </StackPanel>
+                    <CheckBox IsChecked="{Binding Autostart}" Content="{l:Tr Settings_Autostart}" />
+                    <StackPanel Spacing="2">
+                        <CheckBox IsChecked="{Binding StopServersOnExit}" Content="{l:Tr Settings_StopOnExit}" />
+                        <TextBlock Classes="help" Margin="28,0,0,0" Text="{l:Tr Settings_StopOnExit_Help}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <CheckBox IsChecked="{Binding MermaidAutoFix}" Content="{l:Tr Settings_MermaidAutoFix}" />
+                        <TextBlock Classes="help" Margin="28,0,0,0" Text="{l:Tr Settings_MermaidAutoFix_Help}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Moniteur système -->
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconChart}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_Monitor}" />
+                    </StackPanel>
+                    <StackPanel Spacing="14" DataContext="{Binding MonitorSettings}" x:DataType="vm:MonitorSettingsViewModel">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="24" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+                        <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" Text="{l:Tr Mon_Set_Interval}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding IntervalText}" />
+                            </Grid>
+                            <Slider Minimum="0" Maximum="1000" Value="{Binding IntervalPos}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" Text="{l:Tr Mon_Set_History}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding HistoryText}" />
+                            </Grid>
+                            <Slider Minimum="30" Maximum="600" TickFrequency="30" IsSnapToTickEnabled="True" Value="{Binding HistorySeconds}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" Text="{l:Tr Mon_Set_Smoothing}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding SmoothingText}" />
+                            </Grid>
+                            <Slider Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Smoothing}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" Text="{l:Tr Mon_Set_LineWidth}" />
+                                <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding LineWidthText}" />
+                            </Grid>
+                            <Slider Minimum="1" Maximum="4" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding LineWidth}" />
+                        </StackPanel>
+                        <CheckBox Grid.Row="2" VerticalAlignment="Bottom" IsChecked="{Binding Fill}" Content="{l:Tr Mon_Set_Fill}" />
+                        <CheckBox Grid.Row="2" Grid.Column="1" VerticalAlignment="Bottom" IsChecked="{Binding Grid}" Content="{l:Tr Mon_Set_Grid}" />
+                    </Grid>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="{l:Tr Mon_Set_Colors}" />
+                        <ItemsControl ItemsSource="{Binding ColorRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChartColorRow">
+                                    <Grid ColumnDefinitions="64,Auto,*" Margin="0,2" ColumnSpacing="10">
+                                        <TextBlock VerticalAlignment="Center" Text="{Binding Label}" />
+                                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Swatches}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ColorSwatch">
+                                                    <Button Classes="flat" Padding="2" ToolTip.Tip="{Binding Hex}"
+                                                            Command="{Binding Pick}"
+                                                            CommandParameter="{Binding}">
+                                                        <Border Classes="swatch" Background="{Binding Brush}" Classes.selected="{Binding IsSelected}" />
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <!-- Courbe fictive : montre l'effet des réglages -->
+                                        <c:Sparkline Grid.Column="2" Height="34" MinWidth="90" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                     Data="{Binding Demo}" Stroke="{Binding Brush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="help" Text="{l:Tr Mon_Set_ColorsHelp}" />
+                    </StackPanel>
+                    <Button HorizontalAlignment="Left" Command="{Binding ResetCommand}" Content="{l:Tr Mon_Set_Reset}" />
+                </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- À propos -->
+            <Border Classes="card">
+                <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="icon accent" Text="{StaticResource IconInfo}" />
+                        <TextBlock Classes="h2" Text="{l:Tr Settings_About}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Image Source="avares://alpenmux/Assets/icon-64.png" Width="36" Height="36" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="h3">
+                                <Run Text="Alpen" /><Run Text="mux" Foreground="{DynamicResource BrandMux}" />
+                            </TextBlock>
+                            <TextBlock Classes="muted small" Text="{Binding AboutVersion}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Classes="help" Text="{l:Tr Settings_About_Text}" />
+                </StackPanel>
+            </Border>
+            </c:MasonryPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

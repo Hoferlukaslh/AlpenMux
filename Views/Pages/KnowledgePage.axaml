@@ -1,0 +1,263 @@
+<!--
+    Fichier      :  KnowledgePage.axaml
+    Projet       :  AlpenMux
+    Description  :  Page Connaissances (RAG) : à gauche, création et liste des bases ; à droite, la base ouverte
+                    (sources, serveur d'embedding, indexation, zone de test).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             x:Class="AlpenMux.Views.Pages.KnowledgePage"
+             x:DataType="vm:KnowledgeViewModel">
+    <Grid ColumnDefinitions="330,*" Margin="28,28,28,16" ColumnSpacing="18">
+
+        <!-- ============ Colonne gauche : création et liste des bases ============ -->
+        <ScrollViewer Grid.Column="0">
+            <StackPanel Spacing="14">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="h1" Text="{l:Tr Kb_Title}" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap" Text="{l:Tr Kb_Subtitle}" />
+                </StackPanel>
+
+                <!-- Nouvelle base -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_NewTitle}" />
+                        <TextBox Text="{Binding NewName}" PlaceholderText="{l:Tr Kb_NamePlaceholder}" />
+                        <ItemsControl ItemsSource="{Binding NewSources}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,2">
+                                        <TextBlock Classes="small" Text="{Binding}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Classes="flat" Padding="4,2"
+                                                Command="{Binding $parent[UserControl].((vm:KnowledgeViewModel)DataContext).RemoveNewSourceCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconClose}" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="muted small" Text="{l:Tr Kb_NoSources}" IsVisible="{Binding NewSources.Count, Converter={x:Static l:Converters.IsZero}}" />
+                        <WrapPanel ItemSpacing="6" LineSpacing="6">
+                            <Button Classes="flat" Command="{Binding AddNewFolderCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconFolder}" />
+                                    <TextBlock Text="{l:Tr Kb_AddFolder}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="flat" Command="{Binding AddNewFilesCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconFile}" />
+                                    <TextBlock Text="{l:Tr Kb_AddFiles}" />
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                        <Button Classes="accent" Command="{Binding CreateCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconDatabase}" />
+                                <TextBlock Text="{l:Tr Kb_Create}" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Error}"
+                                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Liste des bases -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_Bases}" />
+                        <TextBlock Classes="muted" Text="{l:Tr Kb_Empty}" IsVisible="{Binding Bases.Count, Converter={x:Static l:Converters.IsZero}}" />
+                        <ItemsControl ItemsSource="{Binding Bases}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:KnowledgeBaseItem">
+                                    <Button Classes="flat" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,8" Margin="0,2"
+                                            Command="{Binding $parent[UserControl].((vm:KnowledgeViewModel)DataContext).SelectBaseCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock FontWeight="Bold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="small muted" Text="{Binding Summary}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ============ Colonne droite : la base ouverte ============ -->
+        <TextBlock Grid.Column="1" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                   Text="{l:Tr Kb_PickOne}" IsVisible="{Binding !HasSelected}" />
+
+        <ScrollViewer Grid.Column="1" IsVisible="{Binding HasSelected}">
+            <StackPanel Spacing="14" Margin="0,0,8,0">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="h2" Text="{Binding Selected.Name}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted small" Text="{Binding Selected.Summary}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="danger" VerticalAlignment="Center" Command="{Binding DeleteCommand}">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon" Text="{StaticResource IconTrash}" />
+                            <TextBlock Text="{l:Tr Kb_Delete}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                <TextBlock Classes="warn" Text="{l:Tr Kb_DeleteConfirm}" IsVisible="{Binding DeleteArmed}" TextWrapping="Wrap" />
+
+                <!-- Sources de la base -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_Sources}" />
+                        <ItemsControl ItemsSource="{Binding Selected.Sources}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,2">
+                                        <TextBlock Classes="small" Text="{Binding}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Classes="flat" Padding="4,2"
+                                                Command="{Binding $parent[UserControl].((vm:KnowledgeViewModel)DataContext).RemoveSourceCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconClose}" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Classes="flat" HorizontalAlignment="Left" Command="{Binding AddSourceCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="icon" Text="{StaticResource IconPlus}" />
+                                <TextBlock Text="{l:Tr Kb_AddFolder}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Serveur d'embedding -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_Server}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Kb_ServerHint}" />
+                        <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding EmbeddingServers}" SelectedItem="{Binding Server}"
+                                  IsVisible="{Binding !NoServers}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InstanceViewModel">
+                                    <TextBlock Text="{Binding Title}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Classes="warn" TextWrapping="Wrap" Text="{l:Tr Kb_ServerNone}" IsVisible="{Binding NoServers}" />
+
+                        <!-- Lancer un modèle d'embedding GGUF ici -->
+                        <Border Background="{DynamicResource SurfaceAlt}" CornerRadius="10" Padding="10">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="small" FontWeight="Bold" Text="{l:Tr Kb_LaunchTitle}" />
+                                <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Kb_NoEmbeddingModel}" IsVisible="{Binding NoEmbeddingModels}" />
+                                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding EmbeddingModels}" SelectedItem="{Binding Model}"
+                                          IsVisible="{Binding !NoEmbeddingModels}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="l:ModelInfo">
+                                            <TextBlock Text="{Binding Repo}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Classes="accent" Command="{Binding LaunchEmbeddingCommand}" IsVisible="{Binding !NoEmbeddingModels}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconPlay}" />
+                                        <TextBlock Text="{l:Tr Kb_Launch}" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Kb_LaunchHint}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Indexation -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_IndexTitle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="accent" Command="{Binding IndexCommand}" IsVisible="{Binding !IsIndexing}"
+                                    IsEnabled="{Binding Server.IsReady, FallbackValue=False}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                                    <TextBlock Text="{l:Tr Kb_Index}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="flat" Command="{Binding RebuildCommand}" IsVisible="{Binding !IsIndexing}"
+                                    IsEnabled="{Binding Server.IsReady, FallbackValue=False}" ToolTip.Tip="{l:Tr Kb_RebuildTip}">
+                                <TextBlock Text="{l:Tr Kb_Rebuild}" />
+                            </Button>
+                            <Button Classes="danger" Command="{Binding CancelIndexCommand}" IsVisible="{Binding IsIndexing}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                                    <TextBlock Text="{l:Tr Common_Cancel}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding IndexPercent}" IsVisible="{Binding IsIndexing}" />
+                        <TextBlock Classes="small" TextWrapping="Wrap" Text="{Binding IndexStatus}" />
+                        <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding IndexError}"
+                                   IsVisible="{Binding IndexError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <StackPanel Spacing="4" IsVisible="{Binding HasFileErrors}">
+                            <TextBlock Classes="small warn" FontWeight="Bold" Text="{l:Tr Kb_FileErrors}" />
+                            <ItemsControl ItemsSource="{Binding FileErrors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Classes="small muted" TextWrapping="Wrap" Text="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Zone de test : une question, les passages trouvés et leurs scores -->
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="h3" Text="{l:Tr Kb_TestTitle}" />
+                        <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{l:Tr Kb_TestHint}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBox Text="{Binding Query}" PlaceholderText="{l:Tr Kb_TestPlaceholder}">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <Button Grid.Column="1" Classes="accent" Command="{Binding SearchCommand}" IsEnabled="{Binding !IsSearching}">
+                                <StackPanel Classes="btn">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconSearch}" />
+                                    <TextBlock Text="{l:Tr Kb_Search}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <TextBlock Classes="muted" Text="{Binding QueryMessage}" TextWrapping="Wrap"
+                                   IsVisible="{Binding QueryMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <ItemsControl ItemsSource="{Binding Results}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:KnowledgeResultView">
+                                    <Button Classes="flat" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,8" Margin="0,3"
+                                            Command="{Binding $parent[UserControl].((vm:KnowledgeViewModel)DataContext).OpenSourceCommand}"
+                                            CommandParameter="{Binding}" ToolTip.Tip="{Binding Path}">
+                                        <StackPanel Spacing="3">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <TextBlock FontWeight="Bold" Text="{Binding File}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding Scores}" />
+                                            </Grid>
+                                            <TextBlock Classes="small muted" Text="{Binding Location}" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding Location, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Classes="small" TextWrapping="Wrap" MaxLines="6" TextTrimming="CharacterEllipsis" Text="{Binding Text}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

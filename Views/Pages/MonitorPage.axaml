@@ -1,0 +1,101 @@
+<!--
+    Fichier      :  MonitorPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Moniteur système modulable : widgets (CPU, RAM, GPU, réseau, disque, processus GPU) que l'on déplace,
+                    redimensionne, ajoute, modifie et supprime en mode « Personnaliser ».
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.MonitorPage"
+             x:DataType="vm:MonitorViewModel">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Views/Monitor/MonitorWidgets.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer x:Name="Scroll">
+        <StackPanel Margin="28" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="h1" Text="{l:Tr Mon_Title}" />
+                    <TextBlock Classes="muted" Text="{Binding Uptime}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <Button IsVisible="{Binding !IsEditing}" Command="{Binding ToggleEditCommand}">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                            <TextBlock Text="{l:Tr Mon_Customize}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="accent" IsVisible="{Binding IsEditing}" Command="{Binding ToggleEditCommand}">
+                        <StackPanel Classes="btn">
+                            <TextBlock Classes="icon" Text="{StaticResource IconCheck}" />
+                            <TextBlock Text="{l:Tr Mon_Done}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Barre du mode édition -->
+            <Border Classes="card" IsVisible="{Binding IsEditing}">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBlock Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Mon_EditHint}" />
+                        <Button Grid.Column="1" Command="{Binding ToggleAddCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconPlus}" />
+                                <TextBlock Text="{l:Tr Mon_AddWidget}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" Command="{Binding ResetLayoutCommand}">
+                            <StackPanel Classes="btn">
+                                <TextBlock Classes="icon" Text="{StaticResource IconRefresh}" />
+                                <TextBlock Text="{l:Tr Mon_ResetLayout}" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <ItemsControl IsVisible="{Binding IsAddOpen}" ItemsSource="{Binding Catalog}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TileChoice">
+                                <Button Width="250" Margin="0,0,10,10" HorizontalContentAlignment="Stretch"
+                                        Command="{Binding $parent[ItemsControl].((vm:MonitorViewModel)DataContext).AddTileCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                        <TextBlock Classes="icon accent big" VerticalAlignment="Center" Text="{Binding Glyph}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock FontWeight="Bold" Text="{Binding Name}" />
+                                            <TextBlock Classes="muted small" TextWrapping="Wrap" Text="{Binding Description}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <c:TileBoard x:Name="Board" />
+
+            <Border Classes="card" IsVisible="{Binding IsEmpty}">
+                <StackPanel Spacing="10" HorizontalAlignment="Center">
+                    <TextBlock Classes="muted" HorizontalAlignment="Center" Text="{l:Tr Mon_Empty}" />
+                    <Button HorizontalAlignment="Center" Classes="accent" Command="{Binding ResetLayoutCommand}">
+                        <TextBlock Text="{l:Tr Mon_ResetLayout}" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

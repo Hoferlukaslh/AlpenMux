@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=AlpenMux
+GenericName=Serveurs de modèles d'IA
+GenericName[en]=AI model servers
+Comment=Installer vLLM, télécharger des modèles et lancer des serveurs compatibles OpenAI derrière une seule adresse
+Comment[en]=Install vLLM, download models and run OpenAI-compatible servers behind a single address
+Exec=alpenmux
+Icon=alpenmux
+Terminal=false
+Categories=Development;Utility;
+Keywords=vllm;llm;ai;llama;gguf;tts;openai;router;image;diffusion;flux;
+StartupWMClass=alpenmux

@@ -1,0 +1,28 @@
+﻿ALPENMUX — CE QUI VA ÊTRE INSTALLÉ
+
+AlpenMux installe vLLM, télécharge des modèles d'IA depuis Hugging Face et lance des serveurs compatibles OpenAI, tous joignables par une seule adresse (http://127.0.0.1:9000/v1).
+
+1. L'APPLICATION
+   Dans le dossier choisi (par défaut : C:\Program Files\AlpenMux), avec un raccourci dans le menu Démarrer et, si vous le souhaitez, sur le bureau. Aucune installation de .NET n'est nécessaire.
+
+2. WSL2 (SOUS-SYSTÈME WINDOWS POUR LINUX)
+   vLLM ne fonctionne que sous Linux. AlpenMux le fait donc tourner dans WSL2, la solution officielle de Microsoft. Si WSL2 n'est pas encore activé, cet installateur l'active (composant « WSL2 », coché par défaut). Un redémarrage de Windows peut ensuite être demandé.
+
+3. AU PREMIER LANCEMENT
+   La page Installation d'AlpenMux s'occupe du reste, en un clic sur « Tout installer » :
+     - une distribution Linux dédiée « AlpenMux » (Ubuntu 24.04, environ 1 Go), séparée de vos éventuelles autres distributions WSL ;
+     - les outils (git, compilateur, uv), Python et vLLM (plusieurs Go de téléchargement) ;
+     - en option : vLLM-Omni (synthèse vocale, images), llama.cpp pour Windows (modèles GGUF) et stable-diffusion.cpp pour Windows (images depuis les fichiers uniques).
+   Le GPU NVIDIA est utilisé directement par le pilote Windows : rien à installer dans Linux. Un pilote NVIDIA récent est recommandé.
+
+4. VOS DONNÉES
+   Réglages : %APPDATA%\alpenmux (le token Hugging Face y est enregistré s'il est saisi).
+   Historique des serveurs, llama.cpp, stable-diffusion.cpp, audios et images générés, disque de la distribution : %LOCALAPPDATA%\alpenmux.
+   Modèles : %USERPROFILE%\models par défaut (modifiable).
+   Aucune donnée n'est envoyée ailleurs que vers Hugging Face, GitHub (llama.cpp, stable-diffusion.cpp), recipes.vllm.ai et les sources des paquets que vous installez.
+
+5. RÉSEAU
+   L'adresse unique écoute sur cet ordinateur seulement (127.0.0.1) : l'installateur réserve le port 9000 pour elle.
+
+6. DÉSINSTALLATION
+   Depuis « Applications installées » de Windows. La désinstallation propose aussi de supprimer vos réglages, l'historique et la distribution WSL « AlpenMux » (vLLM et ses paquets). Les modèles téléchargés ne sont jamais supprimés.

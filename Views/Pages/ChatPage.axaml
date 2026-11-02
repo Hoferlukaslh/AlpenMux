@@ -1,0 +1,549 @@
+<!--
+    Fichier      :  ChatPage.axaml
+    Projet       :  AlpenMux
+    Description  :  Page Chat : menu des conversations (dossiers, recherche, déplacement), discussion en streaming
+                    avec un modèle de texte (images et documents joints), réflexion activable selon le modèle,
+                    et réglages (température, tokens, prompt système) repliables. Les images et la synthèse vocale
+                    ont leur page (ImagesPage, AudioPage).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             xmlns:img="using:Avalonia.Media.Imaging"
+             xmlns:c="using:AlpenMux.Controls"
+             x:Class="AlpenMux.Views.Pages.ChatPage"
+             x:DataType="vm:ChatViewModel">
+    <UserControl.Styles>
+        <!-- Zone de dépôt d'un dossier ou du groupe « Sans dossier » : mise en évidence pendant un glisser-déposer -->
+        <Style Selector="Border.dropZone">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border.dropZone.dropTarget">
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+        </Style>
+    </UserControl.Styles>
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,20,20,14" ColumnSpacing="14">
+
+        <!-- ============ Menu des conversations : dossiers et conversations ============ -->
+        <!-- Glisser-déposer : une conversation se dépose sur un dossier ou sur « Sans dossier » (voir ChatPage.axaml.cs) -->
+        <Border Grid.Column="0" Classes="card" Width="250" Padding="10" IsVisible="{Binding IsSidebarOpen}"
+                x:Name="SidebarHost" DragDrop.AllowDrop="True">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="2">
+                    <TextBlock Classes="h3" VerticalAlignment="Center" Text="{l:Tr Chat_Conversations}" />
+                    <Button Grid.Column="1" Classes="flat" Padding="6,4" Command="{Binding NewFolderCommand}" ToolTip.Tip="{l:Tr Chat_NewFolder}">
+                        <TextBlock Classes="icon" Text="{StaticResource IconFolder}" />
+                    </Button>
+                    <Button Grid.Column="2" Classes="flat accent" Padding="6,4" Command="{Binding NewChatCommand}" ToolTip.Tip="{l:Tr Chat_NewConversation}">
+                        <TextBlock Classes="icon" Text="{StaticResource IconPlus}" />
+                    </Button>
+                </Grid>
+                <TextBox Grid.Row="1" Text="{Binding SearchText}" PlaceholderText="{l:Tr Chat_Search}" />
+
+                <ScrollViewer Grid.Row="2">
+                    <ItemsControl ItemsSource="{Binding Groups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ChatGroupViewModel">
+                                <Border Classes="dropZone" Classes.dropTarget="{Binding IsDropTarget}" Margin="-2,0,-2,10" Padding="2">
+                                <StackPanel Spacing="3">
+                                    <!-- En-tête d'un dossier : repli, nom, nombre de conversations, menu -->
+                                    <StackPanel Spacing="4" IsVisible="{Binding IsFolder}">
+                                        <Border Background="{DynamicResource SurfaceAlt}" CornerRadius="8" Padding="2,2">
+                                            <StackPanel Spacing="2">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <Button Classes="flat" Padding="4,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                            Command="{Binding ToggleExpandedCommand}" IsVisible="{Binding !IsRenaming}" ToolTip.Tip="{l:Tr Chat_ToggleFolder}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Classes="icon muted" FontSize="11" VerticalAlignment="Center" Text="{StaticResource IconCaretDown}" IsVisible="{Binding IsExpanded}" />
+                                                            <TextBlock Classes="icon muted" FontSize="11" VerticalAlignment="Center" Text="{StaticResource IconCaretRight}" IsVisible="{Binding !IsExpanded}" />
+                                                            <TextBlock Classes="icon accent" FontSize="14" VerticalAlignment="Center" Text="{StaticResource IconFolder}" />
+                                                            <TextBlock Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Classes="small muted" VerticalAlignment="Center" Text="{Binding CountText}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <TextBox Grid.Column="0" Text="{Binding RenameText}" IsVisible="{Binding IsRenaming}">
+                                                        <TextBox.KeyBindings>
+                                                            <KeyBinding Gesture="Enter" Command="{Binding CommitRenameCommand}" />
+                                                            <KeyBinding Gesture="Escape" Command="{Binding CancelRenameCommand}" />
+                                                        </TextBox.KeyBindings>
+                                                    </TextBox>
+                                                    <Button Grid.Column="1" Classes="flat" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding ShowMenu}"
+                                                            Click="OpenMenu" ToolTip.Tip="{l:Tr Chat_Menu}">
+                                                        <TextBlock Classes="muted" FontWeight="Bold" Text="⋯" />
+                                                        <Button.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="{l:Tr Chat_NewInFolder}" Command="{Binding NewConversationCommand}" />
+                                                                <MenuItem Header="{l:Tr Chat_Rename}" Command="{Binding BeginRenameCommand}" />
+                                                                <MenuItem Header="{l:Tr Chat_DeleteFolder}" Command="{Binding BeginDeleteCommand}" />
+                                                            </ContextMenu>
+                                                        </Button.ContextMenu>
+                                                    </Button>
+                                                    <!-- Maj/Ctrl maintenu : suppression du dossier sans confirmation -->
+                                                    <Button Grid.Column="1" Classes="flat" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding ShowQuickDelete}"
+                                                            Command="{Binding DeleteNowCommand}" ToolTip.Tip="{l:Tr Ui_QuickDelete}">
+                                                        <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconTrash}" />
+                                                    </Button>
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" IsVisible="{Binding IsConfirmingDelete}" Margin="6,0,0,0">
+                                                    <TextBlock Classes="small warn" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Chat_DeleteFolderConfirm}" />
+                                                    <Button Grid.Column="1" Classes="danger" Padding="8,2" Command="{Binding ConfirmDeleteCommand}">
+                                                        <TextBlock Classes="small" Text="{l:Tr Common_Yes}" />
+                                                    </Button>
+                                                    <Button Grid.Column="2" Classes="flat" Padding="8,2" Command="{Binding CancelDeleteCommand}">
+                                                        <TextBlock Classes="small" Text="{l:Tr Common_No}" />
+                                                    </Button>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Titre du groupe sans dossier (seulement s'il existe des dossiers) -->
+                                    <TextBlock Classes="small muted" FontWeight="Bold" Margin="6,0,0,0" Text="{Binding Name}" IsVisible="{Binding ShowLabel}" />
+
+                                    <!-- Conversations du groupe : décalées sous leur dossier, avec un trait à gauche -->
+                                    <Border BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="{Binding GuideThickness}"
+                                            Padding="{Binding ItemsPadding}" Margin="10,0,0,0" IsVisible="{Binding ShowItems}">
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+<DataTemplate x:DataType="vm:ConversationItemViewModel">
+                                                    <StackPanel Spacing="3" Margin="0,1">
+                                                        <Grid ColumnDefinitions="*,Auto">
+                                                            <!-- Tag « drag » : seule cette zone démarre un glisser-déposer (voir ChatPage.axaml.cs) -->
+                                                            <Button Classes="flat" Padding="8,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                                    Tag="drag" Command="{Binding OpenCommand}" IsVisible="{Binding !IsRenaming}">
+                                                                <StackPanel Spacing="1">
+                                                                    <TextBlock Classes.accent="{Binding IsCurrent}" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Classes="small muted" Text="{Binding UpdatedText}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                            <TextBox Grid.Column="0" Text="{Binding RenameText}" IsVisible="{Binding IsRenaming}">
+                                                                <TextBox.KeyBindings>
+                                                                    <KeyBinding Gesture="Enter" Command="{Binding CommitRenameCommand}" />
+                                                                    <KeyBinding Gesture="Escape" Command="{Binding CancelRenameCommand}" />
+                                                                </TextBox.KeyBindings>
+                                                            </TextBox>
+                                                            <Button Grid.Column="1" Classes="flat" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding ShowMenu}"
+                                                                    Click="OpenMenu" ToolTip.Tip="{l:Tr Chat_Menu}">
+                                                                <TextBlock Classes="muted" FontWeight="Bold" Text="⋯" />
+                                                                <Button.ContextMenu>
+                                                                    <ContextMenu>
+                                                                        <MenuItem Header="{l:Tr Chat_Rename}" Command="{Binding BeginRenameCommand}" />
+                                                                        <MenuItem Header="{l:Tr Chat_Move}" Command="{Binding BeginMoveCommand}" />
+                                                                        <MenuItem Header="{l:Tr Common_Delete}" Command="{Binding BeginDeleteCommand}" />
+                                                                    </ContextMenu>
+                                                                </Button.ContextMenu>
+                                                            </Button>
+                                                            <!-- Maj/Ctrl maintenu : suppression de la conversation sans confirmation -->
+                                                            <Button Grid.Column="1" Classes="flat" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding ShowQuickDelete}"
+                                                                    Command="{Binding DeleteNowCommand}" ToolTip.Tip="{l:Tr Ui_QuickDelete}">
+                                                                <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconTrash}" />
+                                                            </Button>
+                                                        </Grid>
+                                                        <!-- Choix du dossier de destination -->
+                                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" IsVisible="{Binding IsMoving}" Margin="8,0,0,0">
+                                                            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding FolderOptions}" SelectedItem="{Binding MoveOption, Mode=TwoWay}">
+                                                                <ComboBox.ItemTemplate>
+                                                                    <DataTemplate x:DataType="vm:ChatFolderOption">
+                                                                        <TextBlock Text="{Binding Name}" />
+                                                                    </DataTemplate>
+                                                                </ComboBox.ItemTemplate>
+                                                            </ComboBox>
+                                                            <Button Grid.Column="1" Classes="flat" Padding="4,2" Command="{Binding CancelMoveCommand}">
+                                                                <TextBlock Classes="icon error" FontSize="12" Text="{StaticResource IconClose}" />
+                                                            </Button>
+                                                        </Grid>
+                                                        <!-- Confirmation de la suppression -->
+                                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" IsVisible="{Binding IsConfirmingDelete}" Margin="8,0,0,0">
+                                                            <TextBlock Classes="small warn" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Tr Chat_DeleteConfirm}" />
+                                                            <Button Grid.Column="1" Classes="danger" Padding="8,2" Command="{Binding ConfirmDeleteCommand}">
+                                                                <TextBlock Classes="small" Text="{l:Tr Common_Yes}" />
+                                                            </Button>
+                                                            <Button Grid.Column="2" Classes="flat" Padding="8,2" Command="{Binding CancelDeleteCommand}">
+                                                                <TextBlock Classes="small" Text="{l:Tr Common_No}" />
+                                                            </Button>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ============ Conversation ============ -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+            <!-- En-tête : menu, titre, serveur, réglages -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
+                <Button Classes="flat" Padding="6" VerticalAlignment="Center" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{l:Tr Chat_ToggleSidebar}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconSidebar}" />
+                </Button>
+                <TextBlock Grid.Column="1" Classes="h2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Text="{Binding CurrentTitle}" ToolTip.Tip="{Binding CurrentTitle}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Classes="flat" Padding="6" Command="{Binding ExportMarkdownCommand}" ToolTip.Tip="{l:Tr Chat_ExportMarkdown_Tip}">
+                        <TextBlock Classes="icon" Text="{StaticResource IconDownload}" />
+                    </Button>
+                    <Button Classes="flat" Padding="6" Command="{Binding ExportPdfCommand}" ToolTip.Tip="{l:Tr Chat_ExportPdf_Tip}">
+                        <TextBlock Classes="icon" Text="{StaticResource IconFile}" />
+                    </Button>
+                </StackPanel>
+                <ComboBox Grid.Column="3" Width="250" VerticalAlignment="Center" ItemsSource="{Binding ChatTargets}" SelectedItem="{Binding Target}"
+                          PlaceholderText="{l:Tr Chat_NoServerShort}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:InstanceViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="icon fill" FontSize="13" Classes.ok="{Binding IsReady}" Text="{Binding StateIcon}" />
+                                <TextBlock Text="{Binding Title}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="4" Classes="flat" Padding="6" VerticalAlignment="Center" Command="{Binding ToggleSettingsCommand}" ToolTip.Tip="{l:Tr Chat_ToggleSettings}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                </Button>
+            </Grid>
+
+            <!-- Messages -->
+            <Border Grid.Row="1" Classes="card" Padding="12">
+                <Panel>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8"
+                                IsVisible="{Binding Messages.Count, Converter={x:Static l:Converters.IsZero}}">
+                        <TextBlock Classes="icon muted" FontSize="44" HorizontalAlignment="Center" Text="{StaticResource IconChat}" />
+                        <TextBlock Classes="muted" HorizontalAlignment="Center" Text="{l:Tr Chat_Empty}" />
+                    </StackPanel>
+                    <ScrollViewer x:Name="MessagesScroll">
+                        <ItemsControl ItemsSource="{Binding Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChatMessage">
+                                    <Panel Margin="0,0,0,10">
+                                        <!-- Utilisateur : à droite -->
+                                        <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="640"
+                                                Background="{DynamicResource AccentSoft}" CornerRadius="12" Padding="12,8">
+                                            <StackPanel Spacing="6">
+                                                <ItemsControl ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="img:Bitmap">
+                                                            <Image Source="{Binding}" MaxHeight="120" MaxWidth="160" Stretch="Uniform" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding DocumentNames}" IsVisible="{Binding HasDocuments}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="x:String">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Classes="icon accent" FontSize="15" Text="{StaticResource IconFile}" />
+                                                                <TextBlock Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <SelectableTextBlock TextWrapping="Wrap" Text="{Binding Content}"
+                                                                     IsVisible="{Binding Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
+                                        </Border>
+                                        <!-- Assistant : à gauche -->
+                                        <StackPanel IsVisible="{Binding IsAssistant}" HorizontalAlignment="Left" MaxWidth="760" Spacing="4">
+                                            <TextBlock Classes="icon accent" Text="{StaticResource IconRobot}" />
+                                            <!-- Réflexion du modèle : repliée par défaut, petite ligne cliquable ; dépliée = Markdown estompé -->
+                                            <StackPanel Spacing="4" IsVisible="{Binding HasReasoning}">
+                                                <Button Classes="flat" Padding="6,3" HorizontalAlignment="Left" Command="{Binding ToggleReasoningCommand}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Classes="icon muted" FontSize="14" Text="{StaticResource IconBulb}" />
+                                                        <TextBlock Classes="small muted" VerticalAlignment="Center" Text="{Binding ReasoningHeader}" />
+                                                        <TextBlock Classes="icon muted" FontSize="12" Text="{Binding ReasoningCaret}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Border IsVisible="{Binding ReasoningExpanded}" BorderBrush="{DynamicResource SurfaceBorder}" BorderThickness="2,0,0,0"
+                                                        Padding="12,0,4,0" Margin="8,0,0,4" MaxHeight="320" Opacity="0.75">
+                                                    <c:ChatMarkdownViewer Markdown="{Binding Reasoning}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <!-- Réponse affichée en Markdown (titres, listes, tableaux, code…) -->
+                                            <Border Background="{DynamicResource SurfaceAlt}" CornerRadius="12" Padding="12,8">
+                                                <c:ChatMarkdownViewer Markdown="{Binding DisplayContent}" />
+                                            </Border>
+                                            <!-- Sources de la base citées par la réponse : un clic ouvre le fichier -->
+                                            <StackPanel Spacing="4" IsVisible="{Binding HasSources}">
+                                                <TextBlock Classes="small muted" FontWeight="Bold" Text="{l:Tr Rag_SourcesTitle}" />
+                                                <ItemsControl ItemsSource="{Binding SourceViews}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:KnowledgeResultView">
+                                                            <Button Classes="flat" Padding="8,5" MaxWidth="300" ToolTip.Tip="{Binding Path}"
+                                                                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).OpenSourceCommand}"
+                                                                    CommandParameter="{Binding}">
+                                                                <StackPanel Spacing="2">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <TextBlock Classes="icon accent" FontSize="13" VerticalAlignment="Center" Text="{StaticResource IconFile}" />
+                                                                        <TextBlock Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding File}" TextTrimming="CharacterEllipsis" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Classes="small muted" Text="{Binding Location}" TextTrimming="CharacterEllipsis"
+                                                                               IsVisible="{Binding Location, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="small muted" Text="{Binding Scores}" />
+                                                                    <TextBlock Classes="small" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" Text="{Binding Text}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                            <!-- Sous la réponse : statistiques de génération, copier, état des diagrammes -->
+                                            <WrapPanel ItemSpacing="8" LineSpacing="2">
+                                                <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Stats}"
+                                                           IsVisible="{Binding Stats, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <Button Classes="flat" Padding="4,1" Command="{Binding CopyCommand}" ToolTip.Tip="{l:Tr Chat_CopyAnswer}"
+                                                        IsVisible="{Binding Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <TextBlock Classes="icon" FontSize="14" Text="{StaticResource IconCopy}" IsVisible="{Binding !Copied}" />
+                                                        <TextBlock Classes="icon ok" FontSize="14" Text="{StaticResource IconCheck}" IsVisible="{Binding Copied}" />
+                                                        <TextBlock Classes="small muted" VerticalAlignment="Center" Text="{l:Tr Chat_Copied}" IsVisible="{Binding Copied}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <TextBlock Classes="muted small" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding DiagramStatus}"
+                                                           IsVisible="{Binding DiagramStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Panel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
+
+            <!-- Contexte, erreurs, et zone de saisie -->
+            <StackPanel Grid.Row="2" Spacing="6">
+                <!-- Contexte en direct : discussion (plein) + message en cours (clair) / taille maximale -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" IsVisible="{Binding HasContext}">
+                    <TextBlock Classes="icon muted" VerticalAlignment="Center" Text="{StaticResource IconStack}" ToolTip.Tip="{l:Tr Chat_Ctx_Tip}" />
+                    <Panel Grid.Column="1" VerticalAlignment="Center" Height="8" ToolTip.Tip="{l:Tr Chat_Ctx_Tip}">
+                        <ProgressBar Classes="thin" Opacity="0.35" Minimum="0" Maximum="100" Value="{Binding DraftPercent}" />
+                        <ProgressBar Classes="thin" Background="Transparent" Minimum="0" Maximum="100" Value="{Binding ContextPercent}"
+                                     Classes.warn="{Binding ContextClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                                     Classes.error="{Binding ContextClass, Converter={x:Static l:Converters.IsErrorClass}}" />
+                    </Panel>
+                    <TextBlock Grid.Column="2" Classes="small" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding ContextText}" />
+                </Grid>
+                <TextBlock Classes="small" TextWrapping="Wrap" Text="{Binding ContextHint}"
+                           Classes.muted="{Binding ContextClass, Converter={x:Static l:Converters.IsOkClass}}"
+                           Classes.warn="{Binding ContextClass, Converter={x:Static l:Converters.IsWarnClass}}"
+                           Classes.error="{Binding ContextClass, Converter={x:Static l:Converters.IsErrorClass}}"
+                           IsVisible="{Binding ContextHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="error" TextWrapping="Wrap" Text="{Binding Error}"
+                           IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- Zone de saisie : pièces jointes au-dessus, texte, puis barre d'outils (inspirée de LM Studio) -->
+                <Border Classes="card composer" Padding="10,8" CornerRadius="16">
+                    <StackPanel Spacing="6">
+                        <!-- Documents joints au prochain message : convertis en Markdown (markitdown) -->
+                        <ItemsControl ItemsSource="{Binding PendingDocuments}" IsVisible="{Binding HasPendingDocuments}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel ItemSpacing="8" LineSpacing="6" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PendingDocument">
+                                    <Border Background="{DynamicResource SurfaceAlt}" CornerRadius="8" Padding="8,5" MaxWidth="360">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                            <TextBlock Classes="icon accent" Text="{StaticResource IconFile}" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Classes="small" FontWeight="Bold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="small muted" Classes.error="{Binding IsError}" Text="{Binding Status}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="flat" Padding="2" VerticalAlignment="Top"
+                                                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveDocumentCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconClose}" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- Images jointes au prochain message -->
+                        <ItemsControl ItemsSource="{Binding PendingImages}" IsVisible="{Binding HasPendingImages}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel ItemSpacing="8" LineSpacing="6" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PendingImage">
+                                    <Grid ToolTip.Tip="{Binding Name}">
+                                        <Image Source="{Binding Thumbnail}" Height="64" MaxWidth="110" Stretch="Uniform" />
+                                        <Button Classes="flat" Padding="2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveImageCommand}" CommandParameter="{Binding}">
+                                            <TextBlock Classes="icon error" FontSize="13" Text="{StaticResource IconClose}" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBox x:Name="InputBox" Text="{Binding Input}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="44" MaxHeight="200" BorderThickness="0" Background="Transparent" Padding="6,8"
+                                 PlaceholderText="{l:Tr Chat_Placeholder}" />
+
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <!-- Outils : joindre, réflexion -->
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="flat" Padding="6,4" Command="{Binding AttachDocumentCommand}" IsVisible="{Binding CanAttachDocuments}" ToolTip.Tip="{l:Tr Chat_AttachDocument}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconFile}" />
+                                </Button>
+                                <Button Classes="flat" Padding="6,4" Command="{Binding AttachImageCommand}" IsVisible="{Binding CanAttachImages}" ToolTip.Tip="{l:Tr Chat_AttachImage}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconImage}" />
+                                </Button>
+                                <!-- Base de connaissances (RAG) interrogée pour ce message -->
+                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" ToolTip.Tip="{l:Tr Rag_BaseTip}">
+                                    <TextBlock Classes="icon muted" FontSize="14" VerticalAlignment="Center" Text="{StaticResource IconDatabase}" />
+                                    <ComboBox MinWidth="150" MaxWidth="210" FontSize="12" ItemsSource="{Binding KnowledgeOptions}" SelectedItem="{Binding Knowledge}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:KnowledgeOption">
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                                <ToggleButton Padding="8,4" IsChecked="{Binding ThinkEnabled}" IsVisible="{Binding ThinkSupported}"
+                                              ToolTip.Tip="{l:Tr Chat_Think_Tip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="icon" FontSize="14" VerticalAlignment="Center" Text="{StaticResource IconBulb}" />
+                                        <TextBlock Classes="small" VerticalAlignment="Center" Text="{l:Tr Chat_Think}" />
+                                    </StackPanel>
+                                </ToggleButton>
+                            </StackPanel>
+
+                            <!-- Taille du message en cours (tokens) -->
+                            <TextBlock Grid.Column="1" Classes="muted small" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                       Text="{Binding DraftText}" />
+
+                            <!-- Actions : effacer, envoyer / arrêter -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                <Button Classes="flat" Padding="6,4" Command="{Binding ClearCommand}" ToolTip.Tip="{l:Tr Chat_Clear}">
+                                    <TextBlock Classes="icon" Text="{StaticResource IconBroom}" />
+                                </Button>
+                                <Button Classes="accent" Command="{Binding SendCommand}" IsVisible="{Binding !IsGenerating}" ToolTip.Tip="{l:Tr Chat_SendTip}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon" Text="{StaticResource IconSend}" />
+                                        <TextBlock Text="{l:Tr Inst_Send}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="danger" Command="{Binding StopGenerationCommand}" IsVisible="{Binding IsGenerating}">
+                                    <StackPanel Classes="btn">
+                                        <TextBlock Classes="icon fill" Text="{StaticResource IconStop}" />
+                                        <TextBlock Text="{l:Tr Launch_Stop}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- ============ Réglages du chat (repliables) ============ -->
+        <Border Grid.Column="2" Classes="card" Width="260" VerticalAlignment="Top" Padding="14"
+                IsVisible="{Binding IsSettingsOpen}">
+            <ScrollViewer>
+            <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h3" Text="{l:Tr Chat_Settings}" />
+                    <Button Grid.Column="1" Classes="flat" Padding="6,4" Command="{Binding CopyCurlCommand}" ToolTip.Tip="{l:Tr Chat_CopyCurl_Tip}">
+                        <Panel>
+                            <TextBlock Classes="icon muted" FontSize="13" Text="{StaticResource IconCopy}" IsVisible="{Binding !CurlCopied}" />
+                            <TextBlock Classes="icon accent" FontSize="13" Text="{StaticResource IconCheck}" IsVisible="{Binding CurlCopied}" />
+                        </Panel>
+                    </Button>
+                </Grid>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_Temperature}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding TemperatureText}" />
+                    </Grid>
+                    <Slider Minimum="0" Maximum="2" TickFrequency="0.05" IsSnapToTickEnabled="True" Value="{Binding Temperature}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_MaxTokens}" />
+                    <TextBox Text="{Binding MaxTokens}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_TopP}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding TopP, StringFormat={}{0:0.00}}" />
+                    </Grid>
+                    <Slider Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Value="{Binding TopP}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_TopK}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding TopK, StringFormat={}{0:0}}" />
+                    </Grid>
+                    <Slider Minimum="-1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding TopK}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_MinP}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding MinP, StringFormat={}{0:0.00}}" />
+                    </Grid>
+                    <Slider Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Value="{Binding MinP}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_FrequencyPenalty}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding FrequencyPenalty, StringFormat={}{0:0.00}}" />
+                    </Grid>
+                    <Slider Minimum="-2" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding FrequencyPenalty}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_PresencePenalty}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding PresencePenalty, StringFormat={}{0:0.00}}" />
+                    </Grid>
+                    <Slider Minimum="-2" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding PresencePenalty}" />
+                </StackPanel>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="{l:Tr Chat_RepeatPenalty}" />
+                        <TextBlock Grid.Column="1" Classes="small" FontWeight="Bold" Text="{Binding RepeatPenalty, StringFormat={}{0:0.00}}" />
+                    </Grid>
+                    <Slider Minimum="0.5" Maximum="2" TickFrequency="0.05" IsSnapToTickEnabled="True" Value="{Binding RepeatPenalty}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_Personas}" />
+                    <ComboBox ItemsSource="{Binding AvailablePersonas}" SelectedItem="{Binding SelectedPersona}" HorizontalAlignment="Stretch" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_Tools}" />
+                    <TextBox Text="{Binding ToolsJson}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90"
+                             PlaceholderText="{l:Tr Chat_Tools_Placeholder}" />
+                    <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Chat_Tools_Help}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="{l:Tr Chat_System}" />
+                    <TextBox Text="{Binding SystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90"
+                             PlaceholderText="{l:Tr Chat_System_Placeholder}" />
+                    <TextBlock Classes="muted small" Margin="0,4,0,0" TextWrapping="Wrap" Text="{l:Tr Chat_System_Help}" />
+                </StackPanel>
+            </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Visionneuse d'image : par-dessus la page (clic sur une image du chat). Outils et zoom : Controls/ImagePreview.axaml.
+             Échap : fermer (voir ChatPage.axaml.cs). -->
+        <Border Grid.ColumnSpan="3" IsVisible="{Binding IsImagePreviewOpen}" Background="{DynamicResource AppBackground}"
+                CornerRadius="12" Padding="16">
+            <c:ImagePreview Picture="{Binding PreviewImage}" CloseCommand="{Binding ClosePreviewCommand}" SuggestedName="image.png" />
+        </Border>
+    </Grid>
+</UserControl>

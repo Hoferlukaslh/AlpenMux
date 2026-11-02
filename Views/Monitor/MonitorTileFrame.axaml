@@ -1,0 +1,81 @@
+<!--
+    Fichier      :  MonitorTileFrame.axaml
+    Projet       :  AlpenMux
+    Description  :  Cadre d'un widget du moniteur : la carte, et en mode édition la zone de glisser-déposer,
+                    les boutons modifier / supprimer et les poignées de redimensionnement (gérés par TileBoard).
+-->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AlpenMux.ViewModels"
+             xmlns:l="using:AlpenMux.Services"
+             x:Class="AlpenMux.Views.Monitor.MonitorTileFrame"
+             x:DataType="vm:MonitorTileViewModel" ClipToBounds="False">
+
+    <UserControl.Styles>
+        <Style Selector="UserControl.dragging">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="Button.tileBtn">
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="Border.rz">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ClipToBounds="False">
+        <Border Classes="card">
+            <ContentControl x:Name="Body" IsHitTestVisible="{Binding !Monitor.IsEditing}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+        </Border>
+
+        <Grid IsVisible="{Binding Monitor.IsEditing}" ClipToBounds="False">
+            <!-- Toute la carte se saisit pour la déplacer -->
+            <Rectangle Cursor="SizeAll" RadiusX="12" RadiusY="12" Fill="{DynamicResource AccentSoft}" Opacity="0.22" />
+            <Rectangle IsHitTestVisible="False" RadiusX="12" RadiusY="12" Stroke="{DynamicResource Accent}" StrokeThickness="2"
+                       StrokeDashArray="5,4" />
+
+            <!-- Les boutons sont à cheval sur le bord haut pour ne pas cacher les valeurs de l'en-tête -->
+            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0" RenderTransform="translateY(-13px)" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Classes="tileBtn" ToolTip.Tip="{l:Tr Mon_EditWidget}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconSliders}" />
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Width="260" Spacing="6">
+                                <TextBlock Classes="h2" Text="{l:Tr Mon_EditWidget}" />
+                                <TextBlock Classes="label" Text="{l:Tr Mon_TileTitle}" />
+                                <TextBox Text="{Binding Title}" PlaceholderText="{Binding DefaultTitle}" />
+                                <StackPanel Spacing="6" IsVisible="{Binding NeedsGpu}">
+                                    <TextBlock Classes="label" Text="GPU" />
+                                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Monitor.Gpus}"
+                                              SelectedItem="{Binding SelectedGpu}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:GpuCardViewModel">
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+                <Button Classes="tileBtn" ToolTip.Tip="{l:Tr Mon_RemoveWidget}"
+                        Command="{Binding Monitor.RemoveTileCommand}" CommandParameter="{Binding}">
+                    <TextBlock Classes="icon" Text="{StaticResource IconClose}" />
+                </Button>
+            </StackPanel>
+
+            <!-- Poignées : bord droit, bord bas, coin (zone « rz », Tag lu par TileBoard) -->
+            <Border Classes="rz" Tag="r" Width="12" HorizontalAlignment="Right" Margin="0,20,0,24" Cursor="SizeWestEast" />
+            <Border Classes="rz" Tag="b" Height="12" VerticalAlignment="Bottom" Margin="0,0,24,0" Cursor="SizeNorthSouth" />
+            <Border Classes="rz" Tag="rb" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Cursor="BottomRightCorner">
+                <Path Data="M 4,16 L 16,4 M 9,16 L 16,9 M 14,16 L 16,14" Stroke="{DynamicResource Accent}" StrokeThickness="2"
+                      StrokeLineCap="Round" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6" />
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
